@@ -6,6 +6,7 @@ import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v2/dll"
 	"github.com/CarsonSlovoka/go-webview2/v2/webviewloader"
+	"log"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -17,6 +18,7 @@ type Chromium struct {
 	webView *ICoreWebView2
 	// envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 這樣寫只能被綁定在1版本,有其他版本時無法支援
 	envCompletedHandler uintptr
+	controllerCompleted uintptr
 }
 
 func NewChromium(theVersion int) *Chromium {
@@ -27,6 +29,7 @@ func NewChromium(theVersion int) *Chromium {
 		fallthrough
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
+		c.controllerCompleted = newControllerCompletedHandler(c)
 	}
 
 	return c
@@ -49,7 +52,6 @@ func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 	if eno != 0 {
 		return eno
 	}
-
 	return 0
 }
 
@@ -70,6 +72,22 @@ func (c *Chromium) Release() uint32 {
 
 // EnvironmentCompleted https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2createcorewebview2environmentcompletedhandler-invoke
 // iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler.Invoke
-func (c *Chromium) EnvironmentCompleted(errCode w32.HRESULT, createdEnvironment *iCoreWebView2Environment) syscall.Errno {
+func (c *Chromium) EnvironmentCompleted(errCode syscall.Errno, createdEnvironment *iCoreWebView2Environment) syscall.Errno {
+	if errCode != 0 {
+		// log.Fatalf("Creating environment failed with %08x", errCode) // https://go.dev/play/p/g1YwppqXVLX // 08x, x表示16進位, 0n如果不足會用0填充到滿
+		log.Fatalf("Creating environment failed with %s", errCode.Error())
+	}
+
+	_, _, _ = syscall.SyscallN(createdEnvironment.vTbl.addRef, uintptr(unsafe.Pointer(createdEnvironment)))
+
+	createdEnvironment.vTbl.CreateCoreWebView2Controller(c.hwnd, c.controllerCompleted)
+
+	return 0
+}
+
+func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreWebView2Controller) syscall.Errno {
+	if errCode != 0 {
+		log.Fatalf("Creating Controller failed with %s", errCode.Error())
+	}
 	return 0
 }
