@@ -15,10 +15,10 @@ import (
 
 type Chromium struct {
 	hwnd    w32.HWND
-	webView *ICoreWebView2
+	webview *ICoreWebView2
 	// envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 這樣寫只能被綁定在1版本,有其他版本時無法支援
-	envCompletedHandler uintptr
-	controllerCompleted uintptr
+	envCompletedHandler        uintptr
+	controllerCompletedHandler uintptr
 }
 
 func NewChromium(theVersion int) *Chromium {
@@ -29,7 +29,7 @@ func NewChromium(theVersion int) *Chromium {
 		fallthrough
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
-		c.controllerCompleted = newControllerCompletedHandler(c)
+		c.controllerCompletedHandler = newControllerCompletedHandler(c)
 	}
 
 	return c
@@ -80,7 +80,7 @@ func (c *Chromium) EnvironmentCompleted(errCode syscall.Errno, createdEnvironmen
 
 	_, _, _ = syscall.SyscallN(createdEnvironment.vTbl.addRef, uintptr(unsafe.Pointer(createdEnvironment)))
 
-	createdEnvironment.vTbl.CreateCoreWebView2Controller(c.hwnd, c.controllerCompleted)
+	createdEnvironment.vTbl.CreateCoreWebView2Controller(c.hwnd, c.controllerCompletedHandler)
 
 	return 0
 }
@@ -89,5 +89,9 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 	if errCode != 0 {
 		log.Fatalf("Creating Controller failed with %s", errCode.Error())
 	}
+	_, _, _ = syscall.SyscallN(controller.vTbl.addRef, uintptr(unsafe.Pointer(controller)))
+	controller.vTbl.GetCoreWebView2(c.webview) // 取得webview給c.webview
+
+	// c.webview ...
 	return 0
 }
