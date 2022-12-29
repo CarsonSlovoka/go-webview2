@@ -20,7 +20,9 @@ type Chromium struct {
 	// envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 這樣寫只能被綁定在1版本,有其他版本時無法支援
 	// envCompletedHandler        uintptr // 這樣也會有問題，因為go如果變數沒有用到會把記憶體自動回收，保存已經被回收的記憶體空間是沒有意義的
 	// envCompletedHandler        iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerImpl // 這樣弄可行，但不好閱讀，而且要寫額外的代碼
-	envCompletedHandler        *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 可以直接放最後一個版本，因為所有2.x的版本都是兼容，所以放最後一個版本可以做更多的事情，至於如果版本過低，可以在程式中寫邏輯判斷
+	envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 可以直接放最後一個版本，因為所有2.x的版本都是兼容，所以放最後一個版本可以做更多的事情，至於如果版本過低，可以在程式中寫邏輯判斷
+	controller          *iCoreWebView2Controller                                    // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
+
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 
 	webview  *ICoreWebView2
@@ -71,6 +73,8 @@ func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 		_ = dll.User.DispatchMessage(&msg)
 	}
 
+	c.Resize()
+
 	return 0
 }
 
@@ -113,6 +117,8 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 		log.Fatalf("Creating Controller failed with %v", errCode.Error())
 	}
 	_, _, _ = syscall.SyscallN(controller.vTbl.addRef, uintptr(unsafe.Pointer(controller)))
+	c.controller = controller
+
 	c.webview = controller.GetCoreWebView2()
 
 	// webview

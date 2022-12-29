@@ -58,3 +58,12 @@ func (i *iCoreWebView2Controller) GetCoreWebView2(
 	)
 	return coreWebView2
 }
+
+/* x86, x64方法不同，要分開寫
+func (i *iCoreWebView2Controller) PutBounds(bounds w32.RECT) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.putBounds, uintptr(unsafe.Pointer(i)),
+		uintptr(unsafe.Pointer(&bounds)),
+	)
+	return eno
+}
+*/
