@@ -15,6 +15,7 @@ type iCoreWebView2ControllerImpl interface {
 	// TODO
 }
 
+// iCoreWebView2ControllerVTbl 注意dll的版本，要與結構匹配才可以
 type iCoreWebView2ControllerVTbl struct {
 	iUnknownVTbl
 	getIsVisible                      uintptr
@@ -40,8 +41,6 @@ type iCoreWebView2ControllerVTbl struct {
 	notifyParentWindowPositionChanged uintptr
 	close                             uintptr
 	getCoreWebView2                   uintptr
-	getDefaultBackgroundColor         uintptr
-	putDefaultBackgroundColor         uintptr
 }
 
 type iCoreWebView2Controller struct {
@@ -50,9 +49,12 @@ type iCoreWebView2Controller struct {
 }
 
 // GetCoreWebView2 https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-get_corewebview2
-func (i *iCoreWebView2ControllerVTbl) GetCoreWebView2(coreWebView2 *ICoreWebView2) w32.HRESULT {
-	_, _, _ = syscall.SyscallN(i.getCoreWebView2, uintptr(unsafe.Pointer(i)),
+func (i *iCoreWebView2Controller) GetCoreWebView2(
+// coreWebView2 *ICoreWebView2, // 這是一個out的項目，如果傳進來的是nil，沒辦法返回去
+) *ICoreWebView2 {
+	var coreWebView2 *ICoreWebView2
+	_, _, _ = syscall.SyscallN(i.vTbl.getCoreWebView2, uintptr(unsafe.Pointer(i)),
 		uintptr(unsafe.Pointer(&coreWebView2)), // [out]
 	)
-	return 0
+	return coreWebView2
 }

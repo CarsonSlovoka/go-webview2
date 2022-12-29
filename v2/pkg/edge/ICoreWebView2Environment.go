@@ -32,12 +32,13 @@ type iCoreWebView2Environment struct {
 	// impl iCoreWebView2EnvironmentImpl // <- 不需要提供，使用系統所提供的即可
 }
 
-func (i *iCoreWebView2EnvironmentVTbl) CreateCoreWebView2Controller(parentWindow w32.HWND,
-	handler uintptr, // *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
-) w32.HRESULT {
-	r, _, _ := syscall.SyscallN(i.createCoreWebView2Controller, uintptr(unsafe.Pointer(i)),
+// CreateCoreWebView2Controller https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2environment-createcorewebview2controller
+func (i *iCoreWebView2Environment) CreateCoreWebView2Controller(parentWindow w32.HWND,
+	handler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler,
+) uintptr {
+	r, _, _ := syscall.SyscallN(i.vTbl.createCoreWebView2Controller, uintptr(unsafe.Pointer(i)),
 		uintptr(parentWindow),
-		handler,
+		uintptr(unsafe.Pointer(handler)), // 完成之後會調用，此位址的函數，即iCoreWebView2CreateCoreWebView2ControllerCompletedHandler.Invoke()
 	)
-	return w32.HRESULT(r)
+	return r
 }

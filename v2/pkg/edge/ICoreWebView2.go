@@ -81,8 +81,8 @@ type ICoreWebView2 struct {
 }
 
 // Navigate https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-navigate
-func (i *iCoreWebView2VTbl) Navigate(uri string) syscall.Errno {
-	_, _, eno := syscall.SyscallN(i.navigate, uintptr(unsafe.Pointer(i)),
+func (i *ICoreWebView2) Navigate(uri string) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.navigate, uintptr(unsafe.Pointer(i)),
 		w32.UintptrFromStr(uri),
 	)
 	return eno
