@@ -2,6 +2,7 @@ package webviewloader
 
 import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
+	"log"
 	"syscall"
 )
 
@@ -13,38 +14,19 @@ var (
 	procGetAvailableCoreWebView2BrowserVersionStringAddr uintptr
 )
 
-var (
-	hModule syscall.Handle
-)
-
 func init() {
 	var err error
-
 	webView2LoaderDll = syscall.NewLazyDLL("WebView2Loader.dll")
-
 	if webView2LoaderDll.Load() == nil {
-		procCreateCoreWebView2EnvironmentWithOptionsAddr = webView2LoaderDll.NewProc("CreateCoreWebView2EnvironmentWithOptions").Addr()
-		procCompareBrowserVersionsAddr = webView2LoaderDll.NewProc("CompareBrowserVersions").Addr()
-		procGetAvailableCoreWebView2BrowserVersionStringAddr = webView2LoaderDll.NewProc("GetAvailableCoreWebView2BrowserVersionString").Addr()
-	} else {
+		// TODO 可能要做embed，來防止dll找不到的狀況
 		webView2LoaderDll = syscall.NewLazyDLL("./sdk/x64/WebView2Loader.dll")
-		if webView2LoaderDll.Load() != nil {
-			panic(err)
+		if err = webView2LoaderDll.Load(); err == nil {
+			log.Fatalln(err)
 		}
+
 		procCreateCoreWebView2EnvironmentWithOptionsAddr = webView2LoaderDll.NewProc("CreateCoreWebView2EnvironmentWithOptions").Addr()
 		procCompareBrowserVersionsAddr = webView2LoaderDll.NewProc("CompareBrowserVersions").Addr()
 		procGetAvailableCoreWebView2BrowserVersionStringAddr = webView2LoaderDll.NewProc("GetAvailableCoreWebView2BrowserVersionString").Addr()
-
-		/*
-			hModule, err = syscall.LoadLibrary("./sdk/x64/WebView2Loader.dll")
-			if err != nil {
-				panic(err)
-			}
-			procCreateCoreWebView2EnvironmentWithOptionsAddr, _ = syscall.GetProcAddress(hModule, "CreateCoreWebView2EnvironmentWithOptions")
-			procCompareBrowserVersionsAddr, _ = syscall.GetProcAddress(hModule, "CompareBrowserVersions")
-			procGetAvailableCoreWebView2BrowserVersionStringAddr, _ = syscall.GetProcAddress(hModule, "GetAvailableCoreWebView2BrowserVersionString")
-			_ = syscall.FreeLibrary(hModule)
-		*/
 	}
 }
 
@@ -62,4 +44,10 @@ func CreateCoreWebView2EnvironmentWithOptions(
 		environmentCreatedHandler,
 	)
 	return r, eno
+}
+
+func Release() {
+	if err := syscall.FreeLibrary(syscall.Handle(webView2LoaderDll.Handle())); err != nil {
+		log.Fatalln(err)
+	}
 }
