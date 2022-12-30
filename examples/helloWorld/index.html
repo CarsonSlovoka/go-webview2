@@ -1,0 +1,37 @@
+<head>
+  <style>
+    code {
+      color: #ef5959;
+    }
+  </style>
+</head>
+
+<h1>Hello world</h1><br>
+<form>
+  <input type="text" placeholder="send something to the server"/>
+  <input type="submit">
+</form>
+<pre></pre>
+<iframe src="https://en.wikipedia.org/wiki/Main_Page" style="width:100vw;height:80vh"></iframe>
+<script>
+  (() => {
+    document.querySelector("form").onsubmit = async (e) => {
+      e.preventDefault()
+      const formData = new FormData()
+      formData.set("msg", document.querySelector("input").value)
+
+      fetch("/msg/", {
+        method: "post",
+        body: formData
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errMsg = await response.text()
+            throw Error(`${response.statusText} (${response.status}) | ${errMsg} `)
+          }
+          const responseData = await response.json()
+          document.querySelector("pre").innerHTML = JSON.stringify(responseData, undefined, "  ")
+        })
+    }
+  })()
+</script>

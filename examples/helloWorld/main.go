@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"embed"
+	"encoding/json"
 	"fmt"
 	"github.com/CarsonSlovoka/go-webview2/v2"
 	"log"
@@ -13,15 +15,45 @@ var (
 	mux *http.ServeMux
 )
 
+//go:embed index.html
+var pagesFS embed.FS
+
 func simpleTCPServer(ch chan *net.TCPListener) {
 	mux = http.NewServeMux()
+
+	mux.HandleFunc("/msg/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			return
+		}
+		if r.PostForm == nil {
+			if r.ParseMultipartForm(int64(1<<20)) != nil { // 1MB
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			r.PostForm = r.MultipartForm.Value
+		}
+
+		userMsg := r.PostForm.Get("msg")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		msgToUser, _ := json.Marshal(struct {
+			Status int
+			Input  string
+			Output string
+		}{
+			http.StatusOK,
+			userMsg,
+			"server echo:" + fmt.Sprintf("<code>%s</code>", userMsg),
+		})
+		_, _ = w.Write(msgToUser)
+	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(
-			[]byte(`<h1>Hello world</h1><br>
-<iframe src="https://en.wikipedia.org/wiki/Main_Page" style="width:100vw;height:80vh"></iframe>
-`))
+
+		indexHtml, _ := pagesFS.ReadFile("index.html")
+		_, _ = w.Write(indexHtml)
 	})
 
 	server := &http.Server{Addr: "127.0.0.1:0", Handler: mux} // port: 0會自動分配
