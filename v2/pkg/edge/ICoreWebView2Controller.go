@@ -21,7 +21,7 @@ type iCoreWebView2ControllerVTbl struct {
 	getIsVisible                      uintptr
 	putIsVisible                      uintptr
 	getBounds                         uintptr
-	putBounds                         uintptr
+	putBounds                         uintptr // https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-put_bounds
 	getZoomFactor                     uintptr
 	putZoomFactor                     uintptr
 	addZoomFactorChanged              uintptr
