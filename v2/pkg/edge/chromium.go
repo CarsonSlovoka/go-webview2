@@ -131,3 +131,7 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 func (c *Chromium) Navigate(url string) syscall.Errno {
 	return c.webview.Navigate(url)
 }
+
+func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
+	return c.webview.GetSettings()
+}

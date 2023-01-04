@@ -94,6 +94,9 @@ func main() {
 	screenHeight := user32dll.GetSystemMetrics(w32.SM_CYSCREEN)
 	w, err := webview2.NewWebView(&webview2.Config{
 		Title: "webview hello world",
+
+		DevToolsEnabled: true, // 右鍵選單的inspect工具，是否允許啟用
+
 		WindowOptions: &webview2.WindowOptions{
 			IconPath: "",
 			X:        (screenWidth - width) / 2,

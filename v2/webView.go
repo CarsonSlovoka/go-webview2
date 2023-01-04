@@ -3,6 +3,7 @@
 package webview2
 
 import (
+	"fmt"
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v2/dll"
 	"github.com/CarsonSlovoka/go-webview2/v2/pkg/edge"
@@ -29,13 +30,15 @@ type WindowOptions struct {
 type Config struct {
 	Title string // window name
 
-	// TODO
-	EnableDebug bool
+	DevToolsEnabled bool
 
 	*WindowOptions
 }
 
 func NewWebView(cfg *Config) (WebView, error) {
+	if cfg == nil {
+		cfg = &Config{}
+	}
 	w := &webView{}
 	w.windowCh = make(chan w32.HWND)
 
@@ -53,7 +56,9 @@ func NewWebView(cfg *Config) (WebView, error) {
 			log.Printf("Error UnregisterClass: %s", errno)
 		}
 	}
-	w.browser = edge.NewChromium(1)
+
+	chromium := edge.NewChromium(1)
+	w.browser = chromium
 	w.threadID = dll.Kernel.GetCurrentThreadId()
 
 	dll.User.SetForegroundWindow(w.hwnd)
@@ -61,6 +66,15 @@ func NewWebView(cfg *Config) (WebView, error) {
 	if eno := w.browser.Embed(w.hwnd); eno != 0 {
 		return nil, eno
 	}
+
+	settings, eno := chromium.GetSettings()
+	if eno != 0 {
+		return nil, fmt.Errorf("[Error GetSettings] %w", eno)
+	}
+	if eno = settings.PutAreDevToolsEnabled(cfg.DevToolsEnabled); eno != 0 {
+		return nil, fmt.Errorf("[Error PutAreDevToolsEnabled] %w", eno)
+	}
+
 	return w, nil
 }
 

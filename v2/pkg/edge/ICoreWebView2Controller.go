@@ -1,21 +1,20 @@
 package edge
 
 import (
-	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"syscall"
 	"unsafe"
 )
 
 // iCoreWebView2Controller https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/ns-webview2-icorewebview2controllervtbl
 // 有好幾個版本, 此為版本2的參考 https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/ns-webview2-icorewebview2controller2vtbl
-
+/* 實作都和原來的一樣，不需要再指定
 type iCoreWebView2ControllerImpl interface {
 	iUnknownImpl
 	GetCoreWebView2(coreWebView2 *ICoreWebView2) w32.HRESULT
-	// TODO
 }
+*/
 
-// iCoreWebView2ControllerVTbl 注意dll的版本，要與結構匹配才可以
+// iCoreWebView2ControllerVTbl
 type iCoreWebView2ControllerVTbl struct {
 	iUnknownVTbl
 	getIsVisible                      uintptr
@@ -45,7 +44,7 @@ type iCoreWebView2ControllerVTbl struct {
 
 type iCoreWebView2Controller struct {
 	vTbl *iCoreWebView2ControllerVTbl
-	// impl iCoreWebView2ControllerImpl
+	// impl iCoreWebView2ControllerImpl // 實作都和原來的一樣，不需要再指定
 }
 
 // GetCoreWebView2 https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-get_corewebview2
