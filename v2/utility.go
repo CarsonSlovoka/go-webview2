@@ -10,7 +10,7 @@ import (
 	"syscall"
 )
 
-func createWindow(windowName, className, iconPath string) (w32.HWND, error) {
+func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 	hInstance := w32.HINSTANCE(dll.Kernel.GetModuleHandle(""))
 	log.Println("hInstance:", hInstance)
 
@@ -27,12 +27,12 @@ func createWindow(windowName, className, iconPath string) (w32.HWND, error) {
 	}))
 
 	// Register
-	pUTF16ClassName, _ := syscall.UTF16PtrFromString(className)
+	pUTF16ClassName, _ := syscall.UTF16PtrFromString(opt.ClassName)
 
 	var hIcon w32.HANDLE
-	if iconPath != "" {
+	if opt.IconPath != "" {
 		hIcon, _ = dll.User.LoadImage(0, // hInstance must be NULL when loading from a file
-			iconPath,
+			opt.IconPath,
 			w32.IMAGE_ICON, 0, 0, w32.LR_LOADFROMFILE|w32.LR_DEFAULTSIZE|w32.LR_SHARED)
 	}
 
@@ -47,14 +47,31 @@ func createWindow(windowName, className, iconPath string) (w32.HWND, error) {
 		return 0, fmt.Errorf("[RegisterClass Error] %w", errno)
 	}
 
+	width := opt.Width
+	if width == 0 {
+		width = w32.CW_USEDEFAULT
+	}
+	height := opt.Height
+	if height == 0 {
+		height = w32.CW_USEDEFAULT
+	}
+	posX := opt.X
+	if posX == 0 {
+		posX = w32.CW_USEDEFAULT
+	}
+	posY := opt.Y
+	if posY == 0 {
+		posY = w32.CW_USEDEFAULT
+	}
+
 	// Create window
 	hwnd, errno := dll.User.CreateWindowEx(0,
-		className,
-		windowName,
+		opt.ClassName,
+		title,
 		w32.WS_OVERLAPPEDWINDOW,
 
 		// Size and position
-		w32.CW_USEDEFAULT, w32.CW_USEDEFAULT, w32.CW_USEDEFAULT, w32.CW_USEDEFAULT,
+		posX, posY, width, height,
 
 		0, // Parent window
 		0, // Menu
@@ -63,7 +80,7 @@ func createWindow(windowName, className, iconPath string) (w32.HWND, error) {
 	)
 
 	if errno != 0 {
-		if errno2 := dll.User.UnregisterClass(windowName, hInstance); errno2 != 0 {
+		if errno2 := dll.User.UnregisterClass(opt.ClassName, hInstance); errno2 != 0 {
 			fmt.Printf("Error UnregisterClass: %s", errno2)
 		}
 		return 0, errno

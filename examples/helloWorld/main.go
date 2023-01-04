@@ -5,7 +5,9 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v2"
+	"github.com/CarsonSlovoka/go-webview2/v2/dll"
 	"log"
 	"net"
 	"net/http"
@@ -85,19 +87,30 @@ func main() {
 	tcpListener := <-chListener
 	fmt.Println(tcpListener.Addr().String())
 
+	user32dll := dll.User
+	width := int32(1024)
+	height := int32(768)
+	screenWidth := user32dll.GetSystemMetrics(w32.SM_CXSCREEN)
+	screenHeight := user32dll.GetSystemMetrics(w32.SM_CYSCREEN)
 	w, err := webview2.NewWebView(&webview2.Config{
 		Title: "webview hello world",
 		WindowOptions: &webview2.WindowOptions{
 			IconPath: "",
+			X:        (screenWidth - width) / 2,
+			Y:        (screenHeight - height) / 2,
+			Width:    width,
+			Height:   height,
 		},
 	})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+
 	defer func() {
 		w.Release()
 	}()
+
 	// _ = w.Navigate("https://en.wikipedia.org/wiki/Main_Page")
 	_ = w.Navigate("http://" + tcpListener.Addr().String() + "/")
 	w.Run()
