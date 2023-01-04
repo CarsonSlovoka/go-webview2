@@ -10,8 +10,9 @@ import (
 	"syscall"
 )
 
-func createWindow(windowName, className string) (w32.HWND, syscall.Errno) {
+func createWindow(windowName, className string) (w32.HWND, error) {
 	hInstance := w32.HINSTANCE(dll.Kernel.GetModuleHandle(""))
+	log.Println("hInstance:", hInstance)
 
 	// Define WinProc
 	wndProcFuncPtr := syscall.NewCallback(w32.WndProc(func(hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
@@ -19,11 +20,6 @@ func createWindow(windowName, className string) (w32.HWND, syscall.Errno) {
 		case w32.WM_CREATE:
 			dll.User.ShowWindow(hwnd, w32.SW_SHOW)
 		case w32.WM_DESTROY:
-			if errno := dll.User.UnregisterClass(windowName, hInstance); errno != 0 {
-				log.Printf("Error UnregisterClass: %s", errno)
-			} else {
-				log.Println("OK UnregisterClass")
-			}
 			dll.User.PostQuitMessage(0)
 			return 0
 		}
@@ -41,7 +37,7 @@ func createWindow(windowName, className string) (w32.HWND, syscall.Errno) {
 		HIcon:         0,
 		ClassName:     pUTF16ClassName,
 	}); atom == 0 {
-		return 0, errno
+		return 0, fmt.Errorf("[RegisterClass Error] %w", errno)
 	}
 
 	// Create window
@@ -65,5 +61,5 @@ func createWindow(windowName, className string) (w32.HWND, syscall.Errno) {
 		}
 		return 0, errno
 	}
-	return hwnd, 0
+	return hwnd, nil
 }

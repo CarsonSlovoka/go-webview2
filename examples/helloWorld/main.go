@@ -85,11 +85,16 @@ func main() {
 	tcpListener := <-chListener
 	fmt.Println(tcpListener.Addr().String())
 
-	w, eno := webview2.NewWebView()
-	if eno != 0 {
-		fmt.Println(eno)
+	w, err := webview2.NewWebView(&webview2.Config{
+		Title: "webview hello world",
+	})
+	if err != nil {
+		fmt.Println(err)
 		return
 	}
+	defer func() {
+		w.Release()
+	}()
 	// _ = w.Navigate("https://en.wikipedia.org/wiki/Main_Page")
 	_ = w.Navigate("http://" + tcpListener.Addr().String() + "/")
 	w.Run()

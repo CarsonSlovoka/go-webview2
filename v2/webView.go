@@ -6,7 +6,7 @@ import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v2/dll"
 	"github.com/CarsonSlovoka/go-webview2/v2/pkg/edge"
-	"syscall"
+	"log"
 )
 
 type webView struct {
@@ -14,28 +14,50 @@ type webView struct {
 	threadID uint32
 	browser
 
-	windowCh chan w32.HWND
+	windowCh    chan w32.HWND
+	releaseProc func()
 }
 
-func NewWebView() (WebView, syscall.Errno) {
-	w := &webView{}
+type WindowOptions struct {
+	ClassName string
+}
 
+type Config struct {
+	Title string // window name
+
+	// TODO
+	EnableDebug bool
+
+	WindowOptions
+}
+
+func NewWebView(cfg *Config) (WebView, error) {
+	w := &webView{}
 	w.windowCh = make(chan w32.HWND)
 
-	var eno syscall.Errno
-	if w.hwnd, eno = createWindow("webview Window example", "webview"); eno != 0 {
-		return nil, eno
+	var err error
+	if cfg.ClassName == "" {
+		cfg.ClassName = "webview"
+	}
+	if w.hwnd, err = createWindow(cfg.Title, cfg.ClassName); err != nil {
+		return nil, err
 	}
 
+	w.releaseProc = func() {
+		hInstance := w32.HINSTANCE(dll.Kernel.GetModuleHandle(""))
+		if errno := dll.User.UnregisterClass(cfg.ClassName, hInstance); errno != 0 {
+			log.Printf("Error UnregisterClass: %s", errno)
+		}
+	}
 	w.browser = edge.NewChromium(1)
 	w.threadID = dll.Kernel.GetCurrentThreadId()
 
 	dll.User.SetForegroundWindow(w.hwnd)
 
-	if eno = w.browser.Embed(w.hwnd); eno != 0 {
+	if eno := w.browser.Embed(w.hwnd); eno != 0 {
 		return nil, eno
 	}
-	return w, 0
+	return w, nil
 }
 
 func (w *webView) HWND() w32.HWND {
@@ -55,4 +77,8 @@ func (w *webView) Run() {
 		dll.User.TranslateMessage(&msg)
 		dll.User.DispatchMessage(&msg)
 	}
+}
+
+func (w *webView) Release() {
+	w.releaseProc()
 }
