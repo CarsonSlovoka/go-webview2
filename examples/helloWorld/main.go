@@ -95,7 +95,10 @@ func main() {
 	w, err := webview2.NewWebView(&webview2.Config{
 		Title: "webview hello world",
 
-		DevToolsEnabled: true, // 右鍵選單的inspect工具，是否允許啟用
+		Settings: webview2.Settings{
+			AreDefaultContextMenusEnabled: true, // 右鍵選單
+			AreDevToolsEnabled:            true, // 右鍵選單中的inspect工具，是否允許啟用
+		},
 
 		WindowOptions: &webview2.WindowOptions{
 			IconPath: "",

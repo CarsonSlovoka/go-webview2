@@ -27,10 +27,15 @@ type WindowOptions struct {
 	Height    int32
 }
 
+type Settings struct {
+	AreDefaultContextMenusEnabled bool
+	AreDevToolsEnabled            bool
+}
+
 type Config struct {
 	Title string // window name
 
-	DevToolsEnabled bool
+	Settings
 
 	*WindowOptions
 }
@@ -71,8 +76,12 @@ func NewWebView(cfg *Config) (WebView, error) {
 	if eno != 0 {
 		return nil, fmt.Errorf("[Error GetSettings] %w", eno)
 	}
-	if eno = settings.PutAreDevToolsEnabled(cfg.DevToolsEnabled); eno != 0 {
+	if eno = settings.PutAreDevToolsEnabled(cfg.AreDevToolsEnabled); eno != 0 {
 		return nil, fmt.Errorf("[Error PutAreDevToolsEnabled] %w", eno)
+	}
+
+	if eno = settings.PutAreDefaultContextMenusEnabled(cfg.AreDefaultContextMenusEnabled); eno != 0 {
+		return nil, fmt.Errorf("[Error PutAreDefaultContextMenusEnabled] %w", eno)
 	}
 
 	return w, nil

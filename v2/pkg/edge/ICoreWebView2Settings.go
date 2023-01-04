@@ -77,8 +77,17 @@ func (i *ICoreWebView2Settings) GetIsScriptEnabled() (bool, syscall.Errno) {
 //
 
 // PutAreDevToolsEnabled https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2settings-put_aredevtoolsenabled
+// Inspect
 func (i *ICoreWebView2Settings) PutAreDevToolsEnabled(isEnable bool) syscall.Errno {
 	_, _, eno := syscall.SyscallN(i.vTbl.putAreDevToolsEnabled, uintptr(unsafe.Pointer(i)),
+		w32.UintptrFromBool(isEnable),
+	)
+	return eno
+}
+
+// PutAreDefaultContextMenusEnabled The menu after clicking the right mouse.
+func (i *ICoreWebView2Settings) PutAreDefaultContextMenusEnabled(isEnable bool) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.putAreDefaultContextMenusEnabled, uintptr(unsafe.Pointer(i)),
 		w32.UintptrFromBool(isEnable),
 	)
 	return eno
