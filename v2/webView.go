@@ -20,6 +20,7 @@ type webView struct {
 
 type WindowOptions struct {
 	ClassName string
+	IconPath  string
 }
 
 type Config struct {
@@ -28,7 +29,7 @@ type Config struct {
 	// TODO
 	EnableDebug bool
 
-	WindowOptions
+	*WindowOptions
 }
 
 func NewWebView(cfg *Config) (WebView, error) {
@@ -39,7 +40,10 @@ func NewWebView(cfg *Config) (WebView, error) {
 	if cfg.ClassName == "" {
 		cfg.ClassName = "webview"
 	}
-	if w.hwnd, err = createWindow(cfg.Title, cfg.ClassName); err != nil {
+	if w.hwnd, err = createWindow(
+		cfg.Title, cfg.ClassName,
+		cfg.IconPath,
+	); err != nil {
 		return nil, err
 	}
 

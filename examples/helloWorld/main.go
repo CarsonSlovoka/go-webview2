@@ -87,6 +87,9 @@ func main() {
 
 	w, err := webview2.NewWebView(&webview2.Config{
 		Title: "webview hello world",
+		WindowOptions: &webview2.WindowOptions{
+			IconPath: "",
+		},
 	})
 	if err != nil {
 		fmt.Println(err)
