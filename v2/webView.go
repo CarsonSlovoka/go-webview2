@@ -27,9 +27,11 @@ type WindowOptions struct {
 	Height    int32
 }
 
+// Settings ICoreWebView2Settings
 type Settings struct {
-	AreDefaultContextMenusEnabled bool
-	AreDevToolsEnabled            bool
+	AreDevToolsEnabled            bool // Is allows you to open inspect tool.
+	AreDefaultContextMenusEnabled bool // The menu after clicking the right mouse.
+	IsZoomControlEnabled          bool // Ctrl + scroll mouse is enabled
 }
 
 type Config struct {
@@ -82,6 +84,10 @@ func NewWebView(cfg *Config) (WebView, error) {
 
 	if eno = settings.PutAreDefaultContextMenusEnabled(cfg.AreDefaultContextMenusEnabled); eno != 0 {
 		return nil, fmt.Errorf("[Error PutAreDefaultContextMenusEnabled] %w", eno)
+	}
+
+	if eno = settings.PutIsZoomControlEnabled(cfg.IsZoomControlEnabled); eno != 0 {
+		return nil, fmt.Errorf("[Error PutIsZoomControlEnabled] %w", eno)
 	}
 
 	return w, nil

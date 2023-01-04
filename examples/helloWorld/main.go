@@ -96,8 +96,9 @@ func main() {
 		Title: "webview hello world",
 
 		Settings: webview2.Settings{
-			AreDefaultContextMenusEnabled: true, // 右鍵選單
 			AreDevToolsEnabled:            true, // 右鍵選單中的inspect工具，是否允許啟用
+			AreDefaultContextMenusEnabled: true, // 右鍵選單
+			IsZoomControlEnabled:          false,
 		},
 
 		WindowOptions: &webview2.WindowOptions{

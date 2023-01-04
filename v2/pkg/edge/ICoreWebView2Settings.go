@@ -92,3 +92,10 @@ func (i *ICoreWebView2Settings) PutAreDefaultContextMenusEnabled(isEnable bool) 
 	)
 	return eno
 }
+
+func (i *ICoreWebView2Settings) PutIsZoomControlEnabled(isEnable bool) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.putIsZoomControlEnabled, uintptr(unsafe.Pointer(i)),
+		w32.UintptrFromBool(isEnable),
+	)
+	return eno
+}
