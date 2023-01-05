@@ -22,6 +22,13 @@ func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 		case w32.WM_DESTROY:
 			dll.User.PostQuitMessage(0)
 			return 0
+		case w32.WM_SIZE:
+			ctx := winContext.Get(hwnd)
+			if ctx != nil {
+				w := ctx.(*webView)
+				// w.browser.(*edge.Chromium).Resize() // 同下，雖然比較清楚，但是斷言會有額外的開銷
+				w.browser.Resize()
+			}
 		}
 		return dll.User.DefWindowProc(hwnd, uMsg, wParam, lParam)
 	}))

@@ -19,4 +19,5 @@ type WebView interface {
 type browser interface {
 	Embed(hwnd w32.HWND) syscall.Errno
 	Navigate(url string) syscall.Errno
+	Resize()
 }

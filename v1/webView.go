@@ -58,6 +58,7 @@ func NewWebView(cfg *Config) (WebView, error) {
 	if w.hwnd, err = createWindow(cfg.Title, cfg.WindowOptions); err != nil {
 		return nil, err
 	}
+	winContext.Set(w.hwnd, w)
 
 	w.releaseProc = func() {
 		hInstance := w32.HINSTANCE(dll.Kernel.GetModuleHandle(""))
