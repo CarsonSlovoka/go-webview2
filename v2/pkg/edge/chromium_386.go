@@ -1,13 +1,15 @@
-//go:build windows
+//go:build windows && 386
 
 package edge
 
 import (
-	"github.com/jchv/go-webview2/internal/w32"
+	"github.com/CarsonSlovoka/go-pkg/v2/w32"
+	"github.com/CarsonSlovoka/go-webview2/v2/dll"
+	"syscall"
 	"unsafe"
 )
 
-func (c *Chromium) Resize2() {
+func (c *Chromium) Resize() {
 	if c.controller == nil {
 		return
 	}

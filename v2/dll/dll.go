@@ -1,3 +1,5 @@
+//go:build windows
+
 package dll
 
 import "github.com/CarsonSlovoka/go-pkg/v2/w32"

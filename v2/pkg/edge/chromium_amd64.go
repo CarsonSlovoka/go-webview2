@@ -1,4 +1,4 @@
-//go:build windows
+//go:build windows && amd64
 
 package edge
 
@@ -22,5 +22,4 @@ func (c *Chromium) Resize() {
 	_, _, _ = syscall.SyscallN(c.controller.vTbl.putBounds, uintptr(unsafe.Pointer(c.controller)),
 		uintptr(unsafe.Pointer(&bounds)),
 	)
-
 }
