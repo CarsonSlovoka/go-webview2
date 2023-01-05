@@ -4,8 +4,8 @@ package edge
 
 import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
-	"github.com/CarsonSlovoka/go-webview2/v2/dll"
-	"github.com/CarsonSlovoka/go-webview2/v2/webviewloader"
+	"github.com/CarsonSlovoka/go-webview2/v1/dll"
+	"github.com/CarsonSlovoka/go-webview2/v1/webviewloader"
 	"log"
 	"os"
 	"path/filepath"
