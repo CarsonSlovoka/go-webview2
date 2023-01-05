@@ -44,7 +44,7 @@ func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 	}
 
 	if atom, errno := dll.User.RegisterClass(&w32.WNDCLASS{
-		Style:         w32.CS_HREDRAW,
+		Style:         opt.ClassStyle,
 		HbrBackground: w32.COLOR_WINDOW,
 		WndProc:       wndProcFuncPtr,
 		HInstance:     hInstance,
@@ -75,7 +75,7 @@ func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 	hwnd, errno := dll.User.CreateWindowEx(0,
 		opt.ClassName,
 		title,
-		w32.WS_OVERLAPPEDWINDOW,
+		w32.DWORD(opt.Style),
 
 		// Size and position
 		posX, posY, width, height,

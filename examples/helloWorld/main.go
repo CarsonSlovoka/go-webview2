@@ -115,6 +115,9 @@ func main() {
 			Y:        (screenHeight - height) / 2,
 			Width:    width,
 			Height:   height,
+			Style:    w32.WS_OVERLAPPED | w32.WS_CAPTION | w32.WS_SYSMENU | w32.WS_THICKFRAME, /* <- resizeable */
+
+			ClassStyle: 0, // w32.CS_NOCLOSE
 		},
 	})
 	if err != nil {

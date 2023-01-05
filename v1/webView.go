@@ -20,11 +20,13 @@ type webView struct {
 }
 
 type WindowOptions struct {
-	ClassName string
-	IconPath  string
-	X, Y      int32
-	Width     int32
-	Height    int32
+	ClassName  string
+	IconPath   string
+	X, Y       int32
+	Width      int32
+	Height     int32
+	ClassStyle uint32 // window class styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-class-styles#constants
+	Style      uint32 // window styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
 }
 
 // Settings ICoreWebView2Settings
