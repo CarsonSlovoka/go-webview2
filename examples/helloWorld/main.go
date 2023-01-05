@@ -107,7 +107,7 @@ func main() {
 		},
 
 		WindowOptions: &webview2.WindowOptions{
-			IconPath: "",
+			IconPath: "./golang.ico",
 			X:        (screenWidth - width) / 2,
 			Y:        (screenHeight - height) / 2,
 			Width:    width,
