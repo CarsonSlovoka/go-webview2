@@ -25,12 +25,14 @@ type Chromium struct {
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 
-	webview  *ICoreWebView2
-	isInited uintptr // 1表示已經初始化ok
+	webview *ICoreWebView2
+
+	userDataFolder string  // default: env(Appdata)/ExeName
+	isInited       uintptr // 1表示已經初始化ok
 }
 
-func NewChromium(version uint8) *Chromium {
-	c := &Chromium{version: version}
+func NewChromium(userDataFolder string, version uint8) *Chromium {
+	c := &Chromium{version: version, userDataFolder: userDataFolder}
 	switch c.version {
 	case 1:
 		fallthrough
@@ -46,12 +48,19 @@ func NewChromium(version uint8) *Chromium {
 func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 	c.hwnd = hwnd
 
-	curExePath, _ := dll.Kernel.GetModuleFileName(0)
-	dataFolder := filepath.Join(
-		os.Getenv("Appdata"),
-		filepath.Base(curExePath),
-	)
-	if _, eno := webviewloader.CreateCoreWebView2EnvironmentWithOptions("", dataFolder,
+	if c.userDataFolder == "" {
+		curExePath, _ := dll.Kernel.GetModuleFileName(0)
+		c.userDataFolder = filepath.Join(
+			os.Getenv("Appdata"),
+			filepath.Base(curExePath),
+		)
+	}
+
+	if err := os.MkdirAll(c.userDataFolder, os.ModePerm); err != nil {
+		return w32.ERROR_CREATE_FAILED
+	}
+
+	if _, eno := webviewloader.CreateCoreWebView2EnvironmentWithOptions("", c.userDataFolder,
 		0,
 		uintptr(unsafe.Pointer(c.envCompletedHandler)), // 完成之後會觸發envCompletedHandler.Invoke方法
 	); eno != 0 {

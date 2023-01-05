@@ -37,6 +37,8 @@ type Settings struct {
 type Config struct {
 	Title string // window name
 
+	UserDataFolder string
+
 	Settings
 
 	*WindowOptions
@@ -64,7 +66,8 @@ func NewWebView(cfg *Config) (WebView, error) {
 		}
 	}
 
-	chromium := edge.NewChromium(1)
+	var chromium *edge.Chromium
+	chromium = edge.NewChromium(cfg.UserDataFolder, 1)
 	w.browser = chromium
 	w.threadID = dll.Kernel.GetCurrentThreadId()
 

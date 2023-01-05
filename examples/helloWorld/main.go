@@ -12,6 +12,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -97,9 +99,10 @@ func main() {
 	height := int32(768)
 	screenWidth := user32dll.GetSystemMetrics(w32.SM_CXSCREEN)
 	screenHeight := user32dll.GetSystemMetrics(w32.SM_CYSCREEN)
-	w, err := webview2.NewWebView(&webview2.Config{
-		Title: "webview hello world",
 
+	w, err := webview2.NewWebView(&webview2.Config{
+		Title:          "webview hello world",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_hello_world"),
 		Settings: webview2.Settings{
 			AreDevToolsEnabled:            true, // 右鍵選單中的inspect工具，是否允許啟用
 			AreDefaultContextMenusEnabled: true, // 右鍵選單
