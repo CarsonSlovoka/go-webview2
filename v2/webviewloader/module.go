@@ -1,8 +1,13 @@
 package webviewloader
 
 import (
+	_ "embed"
+	"fmt"
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"log"
+	"os"
+	"path/filepath"
+	"runtime"
 	"syscall"
 )
 
@@ -14,29 +19,47 @@ var (
 	procGetAvailableCoreWebView2BrowserVersionStringAddr uintptr
 )
 
+//go:embed sdk/LICENSE.txt
+var webView2LoaderLicense []byte
+
 var (
 	hModule syscall.Handle
 )
 
-func init() {
-	var err error
-	webView2LoaderDll = syscall.NewLazyDLL("WebView2Loader.dll")
-
-	if webView2LoaderDll.Load() == nil {
-		hModule = syscall.Handle(webView2LoaderDll.Handle())
-		procCreateCoreWebView2EnvironmentWithOptionsAddr = webView2LoaderDll.NewProc("CreateCoreWebView2EnvironmentWithOptions").Addr()
-		procCompareBrowserVersionsAddr = webView2LoaderDll.NewProc("CompareBrowserVersions").Addr()
-		procGetAvailableCoreWebView2BrowserVersionStringAddr = webView2LoaderDll.NewProc("GetAvailableCoreWebView2BrowserVersionString").Addr()
-	} else {
-		// TODO 可能要做embed，來防止dll找不到的狀況
-		hModule, err = syscall.LoadLibrary("./sdk/x64/WebView2Loader.dll")
-		if err != nil {
-			panic(err)
+func Install(dirPath string, useNative bool) error {
+	if useNative {
+		webView2LoaderDll = syscall.NewLazyDLL("WebView2Loader.dll")
+		if webView2LoaderDll.Load() == nil {
+			hModule = syscall.Handle(webView2LoaderDll.Handle())
+			procCreateCoreWebView2EnvironmentWithOptionsAddr = webView2LoaderDll.NewProc("CreateCoreWebView2EnvironmentWithOptions").Addr()
+			procCompareBrowserVersionsAddr = webView2LoaderDll.NewProc("CompareBrowserVersions").Addr()
+			procGetAvailableCoreWebView2BrowserVersionStringAddr = webView2LoaderDll.NewProc("GetAvailableCoreWebView2BrowserVersionString").Addr()
+			return nil
 		}
-		procCreateCoreWebView2EnvironmentWithOptionsAddr, _ = syscall.GetProcAddress(hModule, "CreateCoreWebView2EnvironmentWithOptions")
-		procCompareBrowserVersionsAddr, _ = syscall.GetProcAddress(hModule, "CompareBrowserVersions")
-		procGetAvailableCoreWebView2BrowserVersionStringAddr, _ = syscall.GetProcAddress(hModule, "GetAvailableCoreWebView2BrowserVersionString")
 	}
+	var err error
+
+	dllPath := filepath.Join(dirPath, fmt.Sprintf("WebView2Loader_%s.dll", runtime.GOARCH))
+	if _, err = os.Stat(dllPath); os.IsNotExist(err) {
+		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil { // 已存在不影響，不存在就新建
+			return err
+		}
+		if err = os.WriteFile(dllPath, webView2LoaderRawData, os.ModePerm); err != nil {
+			return err
+		}
+		if err = os.WriteFile(filepath.Join(dirPath, "LICENSE.txt"), webView2LoaderLicense, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
+	hModule, err = syscall.LoadLibrary(dllPath)
+	if err != nil {
+		return err
+	}
+	procCreateCoreWebView2EnvironmentWithOptionsAddr, _ = syscall.GetProcAddress(hModule, "CreateCoreWebView2EnvironmentWithOptions")
+	procCompareBrowserVersionsAddr, _ = syscall.GetProcAddress(hModule, "CompareBrowserVersions")
+	procGetAvailableCoreWebView2BrowserVersionStringAddr, _ = syscall.GetProcAddress(hModule, "GetAvailableCoreWebView2BrowserVersionString")
+	return nil
 }
 
 // CreateCoreWebView2EnvironmentWithOptions https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl?view=webview2-1.0.1462.37#createcorewebview2environmentwithoptions

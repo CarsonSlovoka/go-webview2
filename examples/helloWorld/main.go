@@ -8,6 +8,7 @@ import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v2"
 	"github.com/CarsonSlovoka/go-webview2/v2/dll"
+	"github.com/CarsonSlovoka/go-webview2/v2/webviewloader"
 	"log"
 	"net"
 	"net/http"
@@ -82,6 +83,10 @@ func simpleTCPServer(ch chan *net.TCPListener) {
 }
 
 func main() {
+	if err := webviewloader.Install("./sdk/", false); err != nil {
+		log.Fatal("[Install ERROR] ", err)
+	}
+
 	chListener := make(chan *net.TCPListener)
 	go simpleTCPServer(chListener)
 	tcpListener := <-chListener
