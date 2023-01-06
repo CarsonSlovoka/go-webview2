@@ -20,7 +20,7 @@ type webView struct {
 }
 
 type WindowOptions struct {
-	ClassName  string
+	ClassName  string // default is "webview"
 	IconPath   string
 	X, Y       int32
 	Width      int32

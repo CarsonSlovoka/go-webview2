@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"embed"
-	"encoding/json"
 	"fmt"
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v1"
@@ -11,79 +8,17 @@ import (
 	"github.com/CarsonSlovoka/go-webview2/v1/webviewloader"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 	"unsafe"
 )
 
-var (
-	mux *http.ServeMux
-)
+var wg *sync.WaitGroup
 
-//go:embed index.html
-var pagesFS embed.FS
-
-func simpleTCPServer(ch chan *net.TCPListener) {
-	mux = http.NewServeMux()
-
-	mux.HandleFunc("/msg/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			return
-		}
-		if r.PostForm == nil {
-			if r.ParseMultipartForm(int64(1<<20)) != nil { // 1MB
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			r.PostForm = r.MultipartForm.Value
-		}
-
-		userMsg := r.PostForm.Get("msg")
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		msgToUser, _ := json.Marshal(struct {
-			Status int
-			Input  string
-			Output string
-		}{
-			http.StatusOK,
-			userMsg,
-			"server echo:" + fmt.Sprintf("<code>%s</code>", userMsg),
-		})
-		_, _ = w.Write(msgToUser)
-	})
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-
-		indexHtml, _ := pagesFS.ReadFile("index.html")
-		_, _ = w.Write(indexHtml)
-	})
-
-	server := &http.Server{Addr: "127.0.0.1:0", Handler: mux} // port: 0會自動分配
-	listener, _ := net.Listen("tcp", server.Addr)
-	ch <- listener.(*net.TCPListener)
-
-	go func(c chan *net.TCPListener) {
-		for {
-			select {
-			case v, isOpen := <-c:
-				if v == nil && isOpen {
-					log.Println("ready to close the server.")
-					if err := server.Shutdown(context.Background()); err != nil {
-						panic(err)
-					}
-					close(c)
-				}
-			}
-		}
-	}(ch)
-
-	err := server.Serve(listener)
-	log.Printf("[SERVER] %s", err)
+func init() {
+	wg = &sync.WaitGroup{}
 }
 
 func main() {
@@ -94,8 +29,44 @@ func main() {
 	chListener := make(chan *net.TCPListener)
 	go simpleTCPServer(chListener)
 	tcpListener := <-chListener
-	fmt.Println(tcpListener.Addr().String())
+	testURL := "http://" + tcpListener.Addr().String() + "/"
 
+	wg.Add(2)
+	go ExampleHelloWorld(testURL)
+	go ExampleWithNotifyIcon(testURL)
+
+	wg.Wait()
+
+	// close server
+	chListener <- nil
+
+	// Waiting for the server close.
+	select {
+	case _, isOpen := <-chListener:
+		if !isOpen {
+			fmt.Println("safe close")
+			return
+		}
+	}
+}
+
+func ExampleHelloWorld(url string) {
+	w, _ := webview2.NewWebView(&webview2.Config{
+		Title:          "webview hello world",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_hello_world"),
+		WindowOptions: &webview2.WindowOptions{
+			IconPath: "./golang.ico",
+			Style:    w32.WS_OVERLAPPEDWINDOW,
+		},
+	})
+	defer w.Release()
+
+	_ = w.Navigate(url)
+	w.Run()
+	wg.Done()
+}
+
+func ExampleWithNotifyIcon(url string) {
 	user32dll := dll.User
 	gdi32dll := w32.NewGdi32DLL()
 	width := int32(1024)
@@ -106,8 +77,8 @@ func main() {
 	var notifyIconData *w32.NOTIFYICONDATA
 
 	w, err := webview2.NewWebView(&webview2.Config{
-		Title:          "webview hello world",
-		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_hello_world"),
+		Title:          "webview-shellNotifyIcon",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview-shellNotifyIcon"), // 🧙 每一個webview需要不同的資料夾，雖然可以同時運行，但在關閉的時候會有問題，另一個webview會被卡住，推測是資源的衝突
 		Settings: webview2.Settings{
 			AreDevToolsEnabled:            true, // 右鍵選單中的inspect工具，是否允許啟用
 			AreDefaultContextMenusEnabled: true, // 右鍵選單
@@ -115,12 +86,13 @@ func main() {
 		},
 
 		WindowOptions: &webview2.WindowOptions{
-			IconPath: "./golang.ico",
-			X:        (screenWidth - width) / 2,
-			Y:        (screenHeight - height) / 2,
-			Width:    width,
-			Height:   height,
-			Style:    w32.WS_OVERLAPPED | w32.WS_CAPTION | w32.WS_SYSMENU | w32.WS_THICKFRAME, /* <- resizeable */
+			ClassName: "webviewWithNotifyIcon", // 🧙 如果您的程式之中有多個webView，就要各別為他的className命名，否則會產生Class already exists.的錯誤 (預設用webview)
+			IconPath:  "./golang.ico",
+			X:         (screenWidth - width) / 2,
+			Y:         (screenHeight - height) / 2,
+			Width:     width,
+			Height:    height,
+			Style:     w32.WS_OVERLAPPED | w32.WS_CAPTION | w32.WS_SYSMENU | w32.WS_THICKFRAME, /* <- resizeable */
 
 			ClassStyle: 0, // w32.CS_NOCLOSE
 
@@ -211,22 +183,12 @@ func main() {
 		return
 	}
 
-	defer w.Release()
+	// TODO: Error UnregisterClass: Class still has open windows.
+	// 不曉得為什麼Release總是會出現以上錯誤
+	// defer w.Release()
 
-	// _ = w.Navigate("https://en.wikipedia.org/wiki/Main_Page")
-	_ = w.Navigate("http://" + tcpListener.Addr().String() + "/")
+	_ = w.Navigate(url)
 
 	w.Run()
-
-	// close server
-	chListener <- nil
-
-	// Waiting for the server close.
-	select {
-	case _, isOpen := <-chListener:
-		if !isOpen {
-			fmt.Println("safe close")
-			return
-		}
-	}
+	wg.Done()
 }
