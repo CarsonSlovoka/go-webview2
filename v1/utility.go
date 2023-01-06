@@ -6,16 +6,23 @@ import (
 	"fmt"
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v1/dll"
-	"log"
 	"syscall"
 )
 
 func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 	hInstance := w32.HINSTANCE(dll.Kernel.GetModuleHandle(""))
-	log.Println("hInstance:", hInstance)
 
 	// Define WinProc
 	wndProcFuncPtr := syscall.NewCallback(w32.WndProc(func(hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
+		var ctx any
+		if opt.WndProc != nil { // 使用自定義的WndProc
+			ctx = winContext.Get(hwnd)
+			if ctx != nil {
+				w := ctx.(*webView)
+				return opt.WndProc(w.Browser, hwnd, uMsg, wParam, lParam)
+			}
+			return opt.WndProc(nil, hwnd, uMsg, wParam, lParam)
+		}
 		switch uMsg {
 		case w32.WM_CREATE:
 			dll.User.ShowWindow(hwnd, w32.SW_SHOW)
@@ -23,11 +30,11 @@ func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 			dll.User.PostQuitMessage(0)
 			return 0
 		case w32.WM_SIZE:
-			ctx := winContext.Get(hwnd)
+			ctx = winContext.Get(hwnd)
 			if ctx != nil {
 				w := ctx.(*webView)
-				// w.browser.(*edge.Chromium).Resize() // 同下，雖然比較清楚，但是斷言會有額外的開銷
-				w.browser.Resize()
+				// w.Browser.(*edge.Chromium).Resize() // 同下，雖然比較清楚，但是斷言會有額外的開銷
+				w.Browser.Resize()
 			}
 		}
 		return dll.User.DefWindowProc(hwnd, uMsg, wParam, lParam)

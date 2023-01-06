@@ -13,7 +13,7 @@ import (
 type webView struct {
 	hwnd     w32.HWND
 	threadID uint32
-	browser
+	Browser
 
 	windowCh    chan w32.HWND
 	releaseProc func()
@@ -27,6 +27,11 @@ type WindowOptions struct {
 	Height     int32
 	ClassStyle uint32 // window class styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-class-styles#constants
 	Style      uint32 // window styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
+
+	// If you want to rely on the default behavior, you can skip it,
+	// but if there are further requirements,
+	// such as Shell_NotifyIcon, you may want to define your own WndProc.
+	WndProc func(browser Browser, hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT
 }
 
 // Settings ICoreWebView2Settings
@@ -71,12 +76,12 @@ func NewWebView(cfg *Config) (WebView, error) {
 
 	var chromium *edge.Chromium
 	chromium = edge.NewChromium(cfg.UserDataFolder, 1)
-	w.browser = chromium
+	w.Browser = chromium
 	w.threadID = dll.Kernel.GetCurrentThreadId()
 
 	dll.User.SetForegroundWindow(w.hwnd)
 
-	if eno := w.browser.Embed(w.hwnd); eno != 0 {
+	if eno := w.Browser.Embed(w.hwnd); eno != 0 {
 		return nil, eno
 	}
 
