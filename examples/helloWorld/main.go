@@ -21,6 +21,12 @@ func init() {
 	wg = &sync.WaitGroup{}
 }
 
+func init() {
+	if _, err := os.Stat("./golang.ico"); os.IsNotExist(err) {
+		log.Fatal("請確認運行的資料夾，是否含有golang.ico")
+	}
+}
+
 func main() {
 	if err := webviewloader.Install("./sdk/", false); err != nil {
 		log.Fatal("[Install ERROR] ", err)
@@ -135,6 +141,8 @@ func ExampleWithNotifyIcon(url string) {
 					case w32.WM_RBUTTONUP:
 						hMenu := user32dll.CreatePopupMenu()
 						_ = user32dll.AppendMenu(hMenu, w32.MF_STRING, 1023, "Display Dialog")
+						_ = user32dll.SetMenuDefaultItem(hMenu, 1023, false)
+
 						var menuItemInfo w32.MENUITEMINFO
 						_ = user32dll.AppendMenu(hMenu, w32.MF_STRING, 1025, "Exit program")
 
