@@ -152,3 +152,21 @@ syscall.SyscallN(c.controller.vTbl.putBounds, uintptr(unsafe.Pointer(c.controlle
 		uintptr(unsafe.Pointer(&rect)),
 )
 ```
+
+## 本資料夾檔案建立順序
+
+1. iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
+2. iCoreWebView2Environment
+3. iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
+  - iCoreWebView2Controller
+  - 自此呼叫`GetCoreWebView2()`可以取得webview物件
+  - ICoreWebView2NavigationStartingEventHandler
+    - ICoreWebView2NavigationStartingEventArgs
+  - ICoreWebView2FrameNavigationStartingEventHandler
+    - ICoreWebView2Frame // 會用到它所以要新增
+    - ICoreWebView2NavigationStartingEventArgs // 也會用到它
+
+----
+
+無順序項目:
+- ICoreWebView2Settings: 這個可以從webview物件(`ICoreWebView2`)呼叫取得
