@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v1"
@@ -10,16 +11,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
+	"strings"
 	"time"
 	"unsafe"
 )
-
-var wg *sync.WaitGroup
-
-func init() {
-	wg = &sync.WaitGroup{}
-}
 
 func init() {
 	if _, err := os.Stat("./golang.ico"); os.IsNotExist(err) {
@@ -36,12 +31,27 @@ func main() {
 	go simpleTCPServer(chListener)
 	tcpListener := <-chListener
 	testURL := "http://" + tcpListener.Addr().String() + "/"
+	scanner := bufio.NewScanner(os.Stdin)
 
-	wg.Add(2)
-	go ExampleHelloWorld(testURL)
-	go ExampleWithNotifyIcon(testURL)
+	funcMap := map[string]func(url string){
+		"1": ExampleHelloWorld,
+		"2": ExampleWithNotifyIcon,
+	}
+	showCommandMenu()
+	for scanner.Scan() {
+		runCase := strings.ToLower(scanner.Text())
 
-	wg.Wait()
+		if runFunc, exist := funcMap[runCase]; !exist {
+			if runCase == "quit" || runCase == "-1" {
+				break
+			}
+			showCommandMenu()
+			continue
+		} else {
+			// go runFunc(testURL) // 因為每一個webview都要不同的UserDataFolder，所以如果不關掉，下一次再運行相同的項目就會報錯
+			runFunc(testURL)
+		}
+	}
 
 	// close server
 	chListener <- nil
@@ -54,6 +64,14 @@ func main() {
 			return
 		}
 	}
+}
+
+func showCommandMenu() {
+	log.Printf(`
+1: HelloWorld
+2: ExampleWithNotifyIcon
+quit: exit program
+`)
 }
 
 func ExampleHelloWorld(url string) {
@@ -69,10 +87,10 @@ func ExampleHelloWorld(url string) {
 
 	_ = w.Navigate(url)
 	w.Run()
-	wg.Done()
 }
 
 func ExampleWithNotifyIcon(url string) {
+	log.Println("請記得至右下角關閉，才算真的關閉")
 	user32dll := dll.User
 	gdi32dll := w32.NewGdi32DLL()
 	width := int32(1024)
@@ -198,5 +216,4 @@ func ExampleWithNotifyIcon(url string) {
 	_ = w.Navigate(url)
 
 	w.Run()
-	wg.Done()
 }

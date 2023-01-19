@@ -25,7 +25,9 @@ type Chromium struct {
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 
-	webview *ICoreWebView2
+	webview                        *ICoreWebView2
+	navigationStartingEventHandler *ICoreWebView2NavigationStartingEventHandler
+	frameNavigationStartingHandler *ICoreWebView2FrameNavigationStartingEventHandler
 
 	userDataFolder string  // default: env(Appdata)/ExeName
 	isInited       uintptr // 1表示已經初始化ok
@@ -39,6 +41,9 @@ func NewChromium(userDataFolder string, version uint8) *Chromium {
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
 		c.controllerCompletedHandler = newControllerCompletedHandler(c)
+
+		c.navigationStartingEventHandler = newNavigationStartingEventHandler(c)
+		c.frameNavigationStartingHandler = newFrameNavigationStartingEventHandler(c)
 	}
 
 	return c
@@ -115,7 +120,9 @@ func (c *Chromium) EnvironmentCompleted(errCode syscall.Errno,
 	// if c.version < xxx {panic("not support")}
 	_, _, _ = syscall.SyscallN(createdEnvironment.vTbl.addRef, uintptr(unsafe.Pointer(createdEnvironment)))
 
-	createdEnvironment.CreateCoreWebView2Controller(c.hwnd, c.controllerCompletedHandler)
+	createdEnvironment.CreateCoreWebView2Controller(c.hwnd,
+		c.controllerCompletedHandler, // 完成之後會觸發此對象的invoke方法，這裡定義為ControllerCompleted函數
+	)
 
 	return 0
 }
@@ -133,6 +140,30 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 	// webview
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.addRef, uintptr(unsafe.Pointer(c.webview)))
 
+	var token EventRegistrationToken // 不重要，可以都共用即可
+
+	// 以下添加webview相關內容
+	{
+		/* 以下對iframe無效, 這是指ICoreWebView2.Navigate所導向的網址
+		_ = c.webview.AddNavigationStarting(
+			c.navigationStartingEventHandler, // 觸發此方法的invoke，也就是NavigationStartingEventHandler函數
+			&token,
+		)
+		*/
+
+		/* 以下等同: c.webview.AddFrameNavigationStarting 如果不想在ICoreWebView2實作這些方法可以考慮直接用這種方式
+		_, _, _ = syscall.SyscallN(c.webview.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
+			uintptr(unsafe.Pointer(c.frameNavigationStartingHandler)),
+			uintptr(unsafe.Pointer(&token)),
+		)
+		*/
+
+		_ = c.webview.AddFrameNavigationStarting(
+			c.frameNavigationStartingHandler, // 觸發此方法的invoke，也就是FrameNavigationStartingEventHandler函數
+			&token,
+		)
+	}
+
 	atomic.StoreUintptr(&c.isInited, 1)
 	return 0
 }
@@ -143,4 +174,26 @@ func (c *Chromium) Navigate(url string) syscall.Errno {
 
 func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
 	return c.webview.GetSettings()
+}
+
+// NavigationStartingEventHandler
+// Using FrameNavigationStarting event instead of NavigationStarting event of CoreWebViewFrame
+// to cover all possible nested iframes inside the embedded site as CoreWebViewFrame
+// object currently only support first level iframes in the top page.
+func (c *Chromium) NavigationStartingEventHandler(sender *ICoreWebView2, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
+	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2navigationstartingeventargs.additionalallowedframeancestors?view=webview2-dotnet-1.0.1462.37
+	// 類似FrameNavigationStartingEventHandler
+	// TODO: 目前暫無需求，暫不實作
+	// log.Println(args.GetURI()) // 指的是Navigate所代表的網址
+
+	return 0
+}
+
+func (c *Chromium) FrameNavigationStartingEventHandler(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
+	// args.PutAdditionalAllowedFrameAncestors("https://www.youtube.com/ 'self'") // <- 不懂，這樣設定是無效的
+	if args.GetURI() == "https://stackoverflow.com/" {
+		_ = args.PutAdditionalAllowedFrameAncestors("*")
+	}
+	// log.Println(args.GetAdditionalAllowedFrameAncestors())
+	return 0
 }

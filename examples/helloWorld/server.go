@@ -20,6 +20,15 @@ var pagesFS embed.FS
 func simpleTCPServer(ch chan *net.TCPListener) {
 	mux = http.NewServeMux()
 
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+
+		indexHtml, _ := pagesFS.ReadFile("index.html")
+		_, _ = w.Write(indexHtml)
+	})
+
+	// 以下是用來回應XMLHttpRequest
 	mux.HandleFunc("/msg/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			return
@@ -45,14 +54,6 @@ func simpleTCPServer(ch chan *net.TCPListener) {
 			"server echo:" + fmt.Sprintf("<code>%s</code>", userMsg),
 		})
 		_, _ = w.Write(msgToUser)
-	})
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-
-		indexHtml, _ := pagesFS.ReadFile("index.html")
-		_, _ = w.Write(indexHtml)
 	})
 
 	server := &http.Server{Addr: "127.0.0.1:0", Handler: mux} // port: 0會自動分配
