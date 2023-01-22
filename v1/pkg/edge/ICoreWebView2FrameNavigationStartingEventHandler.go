@@ -16,8 +16,9 @@ type ICoreWebView2FrameNavigationStartingEventHandlerVTbl struct {
 type ICoreWebView2FrameNavigationStartingEventHandlerImpl interface {
 	iUnknownImpl
 
+	// 不綁定，讓使用者自己在New的時候在新建
 	// FrameNavigationStartingEventHandler https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2framenavigationstartingeventhandler-invoke
-	FrameNavigationStartingEventHandler(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr
+	// FrameNavigationStartingEventHandler(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr
 }
 
 type ICoreWebView2FrameNavigationStartingEventHandler struct {
@@ -25,7 +26,9 @@ type ICoreWebView2FrameNavigationStartingEventHandler struct {
 	impl ICoreWebView2FrameNavigationStartingEventHandlerImpl
 }
 
-func newFrameNavigationStartingEventHandler(impl ICoreWebView2FrameNavigationStartingEventHandlerImpl) *ICoreWebView2FrameNavigationStartingEventHandler {
+func NewFrameNavigationStartingEventHandler(impl ICoreWebView2FrameNavigationStartingEventHandlerImpl,
+	frameNavigationStartingEventHandler func(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr,
+) *ICoreWebView2FrameNavigationStartingEventHandler {
 	return &ICoreWebView2FrameNavigationStartingEventHandler{
 		vTbl: &ICoreWebView2FrameNavigationStartingEventHandlerVTbl{
 			iUnknownVTbl: iUnknownVTbl{
@@ -42,7 +45,8 @@ func newFrameNavigationStartingEventHandler(impl ICoreWebView2FrameNavigationSta
 
 			// https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-ICoreWebView2NavigationStartingEventHandler-invoke
 			invoke: syscall.NewCallback(func(this *ICoreWebView2FrameNavigationStartingEventHandler, sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
-				return this.impl.FrameNavigationStartingEventHandler(sender, args)
+				// this.impl.FrameNavigationStartingEventHandler(sender, args)
+				return frameNavigationStartingEventHandler(sender, args)
 			}),
 		},
 		impl: impl,

@@ -15,7 +15,6 @@ type webView struct {
 	threadID uint32
 	Browser
 
-	windowCh    chan w32.HWND
 	releaseProc func()
 }
 
@@ -56,7 +55,6 @@ func NewWebView(cfg *Config) (WebView, error) {
 		cfg = &Config{}
 	}
 	w := &webView{}
-	w.windowCh = make(chan w32.HWND)
 
 	var err error
 	if cfg.ClassName == "" {
@@ -125,4 +123,8 @@ func (w *webView) Run() {
 
 func (w *webView) Release() {
 	w.releaseProc()
+}
+
+func (w *webView) GetBrowser() Browser {
+	return w.Browser
 }

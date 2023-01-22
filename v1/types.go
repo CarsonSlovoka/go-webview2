@@ -11,10 +11,11 @@ import (
 type WebView interface {
 	// Navigate https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1462.37#navigate
 	Navigate(uri string) syscall.Errno
-	Close()
-	Release()
+	Close()   // close the window
+	Release() // unregister etc.
 	Run()
 
+	GetBrowser() Browser
 	HWND() w32.HWND
 }
 

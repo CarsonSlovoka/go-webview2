@@ -25,7 +25,7 @@ type Chromium struct {
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 
-	webview                        *ICoreWebView2
+	Webview                        *ICoreWebView2
 	navigationStartingEventHandler *ICoreWebView2NavigationStartingEventHandler
 	frameNavigationStartingHandler *ICoreWebView2FrameNavigationStartingEventHandler
 
@@ -41,9 +41,6 @@ func NewChromium(userDataFolder string, version uint8) *Chromium {
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
 		c.controllerCompletedHandler = newControllerCompletedHandler(c)
-
-		c.navigationStartingEventHandler = newNavigationStartingEventHandler(c)
-		c.frameNavigationStartingHandler = newFrameNavigationStartingEventHandler(c)
 	}
 
 	return c
@@ -135,33 +132,34 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 	_, _, _ = syscall.SyscallN(controller.vTbl.addRef, uintptr(unsafe.Pointer(controller)))
 	c.controller = controller
 
-	c.webview = controller.GetCoreWebView2()
+	c.Webview = controller.GetCoreWebView2()
 
 	// webview
-	_, _, _ = syscall.SyscallN(c.webview.vTbl.addRef, uintptr(unsafe.Pointer(c.webview)))
-
-	var token EventRegistrationToken // 不重要，可以都共用即可
+	_, _, _ = syscall.SyscallN(c.Webview.vTbl.addRef, uintptr(unsafe.Pointer(c.Webview)))
 
 	// 以下添加webview相關內容
 	{
-		/* 以下對iframe無效, 這是指ICoreWebView2.Navigate所導向的網址
-		_ = c.webview.AddNavigationStarting(
+
+		// var token EventRegistrationToken // 不重要，可以都共用即可
+
+		/* AddNavigationStarting, AddFrameNavigationStarting都可以在外自己定義
+		// 以下對iframe無效, 這是指ICoreWebView2.Navigate所導向的網址
+		_ = c.Webview.AddNavigationStarting(
 			c.navigationStartingEventHandler, // 觸發此方法的invoke，也就是NavigationStartingEventHandler函數
 			&token,
 		)
-		*/
 
-		/* 以下等同: c.webview.AddFrameNavigationStarting 如果不想在ICoreWebView2實作這些方法可以考慮直接用這種方式
-		_, _, _ = syscall.SyscallN(c.webview.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
-			uintptr(unsafe.Pointer(c.frameNavigationStartingHandler)),
-			uintptr(unsafe.Pointer(&token)),
-		)
-		*/
+		// 以下等同: c.Webview.AddFrameNavigationStarting 如果不想在ICoreWebView2實作這些方法可以考慮直接用這種方式
+		// _, _, _ = syscall.SyscallN(c.Webview.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(c.Webview)),
+		// 	uintptr(unsafe.Pointer(c.frameNavigationStartingHandler)),
+		// 	uintptr(unsafe.Pointer(&token)),
+		// )
 
-		_ = c.webview.AddFrameNavigationStarting(
+		_ = c.Webview.AddFrameNavigationStarting(
 			c.frameNavigationStartingHandler, // 觸發此方法的invoke，也就是FrameNavigationStartingEventHandler函數
 			&token,
 		)
+		*/
 	}
 
 	atomic.StoreUintptr(&c.isInited, 1)
@@ -169,13 +167,14 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 }
 
 func (c *Chromium) Navigate(url string) syscall.Errno {
-	return c.webview.Navigate(url)
+	return c.Webview.Navigate(url)
 }
 
 func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
-	return c.webview.GetSettings()
+	return c.Webview.GetSettings()
 }
 
+/* 這些可以自己定義，請參考Example: example_eventHandler.go
 // NavigationStartingEventHandler
 // Using FrameNavigationStarting event instead of NavigationStarting event of CoreWebViewFrame
 // to cover all possible nested iframes inside the embedded site as CoreWebViewFrame
@@ -183,9 +182,7 @@ func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
 func (c *Chromium) NavigationStartingEventHandler(sender *ICoreWebView2, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
 	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2navigationstartingeventargs.additionalallowedframeancestors?view=webview2-dotnet-1.0.1462.37
 	// 類似FrameNavigationStartingEventHandler
-	// TODO: 目前暫無需求，暫不實作
-	// log.Println(args.GetURI()) // 指的是Navigate所代表的網址
-
+	log.Println(args.GetURI()) // 指的是Navigate所代表的網址
 	return 0
 }
 
@@ -195,5 +192,7 @@ func (c *Chromium) FrameNavigationStartingEventHandler(sender *ICoreWebView2Fram
 		_ = args.PutAdditionalAllowedFrameAncestors("*")
 	}
 	// log.Println(args.GetAdditionalAllowedFrameAncestors())
+	log.Println(args.GetURI())
 	return 0
 }
+*/

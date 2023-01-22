@@ -36,6 +36,7 @@ func main() {
 	funcMap := map[string]func(url string){
 		"1": ExampleHelloWorld,
 		"2": ExampleWithNotifyIcon,
+		"3": ExampleNavigationStartingEventHandler,
 	}
 	showCommandMenu()
 	for scanner.Scan() {
@@ -70,6 +71,7 @@ func showCommandMenu() {
 	log.Printf(`
 1: HelloWorld
 2: ExampleWithNotifyIcon
+3: ExampleNavigationStartingEventHandler
 quit: exit program
 `)
 }
