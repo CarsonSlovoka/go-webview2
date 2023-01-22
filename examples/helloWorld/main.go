@@ -38,15 +38,14 @@ func main() {
 		"2": ExampleWithNotifyIcon,
 		"3": ExampleNavigationStartingEventHandler,
 	}
-	showCommandMenu()
-	for scanner.Scan() {
+	for {
+		showCommandMenu()
+		scanner.Scan()
 		runCase := strings.ToLower(scanner.Text())
-
 		if runFunc, exist := funcMap[runCase]; !exist {
 			if runCase == "quit" || runCase == "-1" {
 				break
 			}
-			showCommandMenu()
 			continue
 		} else {
 			// go runFunc(testURL) // 因為每一個webview都要不同的UserDataFolder，所以如果不關掉，下一次再運行相同的項目就會報錯

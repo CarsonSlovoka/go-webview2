@@ -25,7 +25,7 @@ type Chromium struct {
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 
-	Webview                        *ICoreWebView2
+	webview                        *ICoreWebView2
 	navigationStartingEventHandler *ICoreWebView2NavigationStartingEventHandler
 	frameNavigationStartingHandler *ICoreWebView2FrameNavigationStartingEventHandler
 
@@ -132,10 +132,10 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 	_, _, _ = syscall.SyscallN(controller.vTbl.addRef, uintptr(unsafe.Pointer(controller)))
 	c.controller = controller
 
-	c.Webview = controller.GetCoreWebView2()
+	c.webview = controller.GetCoreWebView2()
 
 	// webview
-	_, _, _ = syscall.SyscallN(c.Webview.vTbl.addRef, uintptr(unsafe.Pointer(c.Webview)))
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.addRef, uintptr(unsafe.Pointer(c.webview)))
 
 	// 以下添加webview相關內容
 	{
@@ -167,11 +167,11 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 }
 
 func (c *Chromium) Navigate(url string) syscall.Errno {
-	return c.Webview.Navigate(url)
+	return c.webview.Navigate(url)
 }
 
 func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
-	return c.Webview.GetSettings()
+	return c.webview.GetSettings()
 }
 
 /* 這些可以自己定義，請參考Example: example_eventHandler.go
@@ -196,3 +196,48 @@ func (c *Chromium) FrameNavigationStartingEventHandler(sender *ICoreWebView2Fram
 	return 0
 }
 */
+
+// AddNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_navigationstarting
+// https://github.com/MicrosoftEdge/WebView2Feedback/issues/1243
+// https://github.com/MicrosoftEdge/WebView2Feedback/blob/main/specs/AdditionalAllowedFrameAncestors.md#winrt-and-net
+// https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#add_navigationstarting
+// 這類方法的慣用方式，首先要先傳入指定的Handler，而所謂的Handler含有特定的方法(通常其位置對應invoke)，要在invoke的位置新增相對應的處理函數，就會自動觸發該函數來完成Handler所要做的事
+func (c *Chromium) AddNavigationStarting(
+	handlerFunc func(sender *ICoreWebView2, args *ICoreWebView2NavigationStartingEventArgs) uintptr,
+) *EventRegistrationToken {
+	eventHandler := NewNavigationStartingEventHandler(c, handlerFunc)
+	var token EventRegistrationToken
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.addNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(eventHandler)), // 通常只要是Handler類，完成之後都會觸發其invoke的函數
+		uintptr(unsafe.Pointer(&token)),
+	)
+	return &token
+}
+
+// RemoveNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-remove_navigationstarting
+// 測試結果使用之後還是會繼續觸發AddNavigationStarting的項目，似乎沒有移除成功. 且eno沒有訊息
+func (c *Chromium) RemoveNavigationStarting(token *EventRegistrationToken) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.removeNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(token)),
+	)
+}
+
+// AddFrameNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_framenavigationstarting
+func (c *Chromium) AddFrameNavigationStarting(
+	handlerFunc func(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr,
+) *EventRegistrationToken {
+	var token EventRegistrationToken
+	eventHandler := NewFrameNavigationStartingEventHandler(c, handlerFunc)
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(eventHandler)),
+		uintptr(unsafe.Pointer(&token)),
+	)
+	return &token
+}
+
+// RemoveFrameNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-remove_framenavigationstarting
+func (c *Chromium) RemoveFrameNavigationStarting(token *EventRegistrationToken) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.removeFrameNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(token)),
+	)
+}

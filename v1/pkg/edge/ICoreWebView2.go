@@ -100,25 +100,3 @@ func (i *ICoreWebView2) Navigate(uri string) syscall.Errno {
 	)
 	return eno
 }
-
-// AddNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_navigationstarting
-// https://github.com/MicrosoftEdge/WebView2Feedback/issues/1243
-// https://github.com/MicrosoftEdge/WebView2Feedback/blob/main/specs/AdditionalAllowedFrameAncestors.md#winrt-and-net
-// https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#add_navigationstarting
-// 這類方法的慣用方式，首先要先傳入指定的Handler，而所謂的Handler含有特定的方法(通常其位置對應invoke)，要在invoke的位置新增相對應的處理函數，就會自動觸發該函數來完成Handler所要做的事
-func (i *ICoreWebView2) AddNavigationStarting(eventHandler *ICoreWebView2NavigationStartingEventHandler, token *EventRegistrationToken) syscall.Errno {
-	_, _, eno := syscall.SyscallN(i.vTbl.addNavigationStarting, uintptr(unsafe.Pointer(i)),
-		uintptr(unsafe.Pointer(eventHandler)), // 通常只要是Handler類，完成之後都會觸發其invoke的函數
-		uintptr(unsafe.Pointer(token)),
-	)
-	return eno
-}
-
-// AddFrameNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_framenavigationstarting
-func (i *ICoreWebView2) AddFrameNavigationStarting(eventHandler *ICoreWebView2FrameNavigationStartingEventHandler, token *EventRegistrationToken) syscall.Errno {
-	_, _, eno := syscall.SyscallN(i.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(i)),
-		uintptr(unsafe.Pointer(eventHandler)),
-		uintptr(unsafe.Pointer(token)),
-	)
-	return eno
-}
