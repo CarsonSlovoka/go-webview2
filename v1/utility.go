@@ -79,7 +79,8 @@ func createWindow(title string, opt *WindowOptions) (w32.HWND, error) {
 	}
 
 	// Create window
-	hwnd, errno := dll.User.CreateWindowEx(0,
+	hwnd, errno := dll.User.CreateWindowEx(
+		w32.DWORD(opt.ExStyle),
 		opt.ClassName,
 		title,
 		w32.DWORD(opt.Style),

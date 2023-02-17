@@ -119,7 +119,8 @@ func ExampleWithNotifyIcon(url string) {
 			Height:    height,
 			Style:     w32.WS_OVERLAPPED | w32.WS_CAPTION | w32.WS_SYSMENU | w32.WS_THICKFRAME, /* <- resizeable */
 
-			ClassStyle: 0, // w32.CS_NOCLOSE
+			ExStyle:    w32.WS_EX_TOOLWINDOW, // not appear in the taskbar or in the dialog that appears when the user presses ALT+TAB // 因為一開始需要用到SW_SHOW又要避免不想讓使用者知道，所以建議補上此屬性，再之後webview穩定之後再移除
+			ClassStyle: 0,                    // w32.CS_NOCLOSE
 
 			// WndProc非必要，可以不給，會使用預設的行為
 			WndProc: func(browser webview2.Browser, hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
@@ -127,11 +128,16 @@ func ExampleWithNotifyIcon(url string) {
 				case w32.WM_CREATE:
 					// dll.User.ShowWindow(hwnd, w32.SW_MINIMIZE) // 🧙 如果使用SW_MINIMIZE會得到錯誤: Creating environment failed with CoInitialize has not been called.
 					// dll.User.ShowWindow(hwnd, w32.SW_HIDE) // 如果沒有先SH_SHOW會看不見webview，即便之後再SW_SHOW也不行
+					_ = dll.User.SetWindowPos(hwnd, 0, -10000, -10000, 0, 0, w32.SWP_SHOWWINDOW) // 為了在SH_SHOW的情況下，看不見我們把視窗移動到非正常的座標
 					dll.User.ShowWindow(hwnd, w32.SW_SHOW)
 					notifyIconData = NewShellNotifyIcon(hwnd)
 					go func() {
 						<-time.After(1 * time.Second) // 如果太快就HIDE一樣會導致webview的內容呈現失敗
 						dll.User.ShowWindow(hwnd, w32.SW_HIDE)
+						// 調整視窗位置，使其恢復到正常的位置
+						_ = dll.User.SetWindowPos(hwnd, 0, (screenWidth-width)/2, (screenHeight-height)/2, width, height, w32.SWP_HIDEWINDOW)
+						// 移除此屬性，使得taskbar可以正常顯示此應用程式圖標
+						_, _ = dll.User.SetWindowLongPtr(hwnd, w32.GWL_EXSTYLE, uintptr(user32dll.GetWindowLong(hwnd, w32.GWL_EXSTYLE)&^w32.WS_EX_TOOLWINDOW))
 					}()
 				case w32.WM_CLOSE:
 					user32dll.ShowWindow(hwnd, w32.SW_HIDE) // 縮小，不真的結束
@@ -153,7 +159,7 @@ func ExampleWithNotifyIcon(url string) {
 				case WMNotifyIconMsg:
 					switch lParam {
 					case w32.NIN_BALLOONUSERCLICK: // 滑鼠點擊通知橫幅
-						dll.User.ShowWindow(hwnd, w32.SW_SHOW)
+						fallthrough
 					case w32.WM_LBUTTONDBLCLK:
 						// user32dll.ShowWindow(hwnd, w32.SW_SHOWNORMAL)
 						dll.User.ShowWindow(hwnd, w32.SW_SHOW)

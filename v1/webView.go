@@ -25,6 +25,7 @@ type WindowOptions struct {
 	Width      int32
 	Height     int32
 	ClassStyle uint32 // window class styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-class-styles#constants
+	ExStyle    uint32 // Extended window style: https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles
 	Style      uint32 // window styles: https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
 
 	// If you want to rely on the default behavior, you can skip it,
