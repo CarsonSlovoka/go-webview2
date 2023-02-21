@@ -6,9 +6,12 @@ import (
 	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"github.com/CarsonSlovoka/go-webview2/v1"
 	"github.com/CarsonSlovoka/go-webview2/v1/dll"
+	"github.com/CarsonSlovoka/go-webview2/v1/pkg/edge"
 	"github.com/CarsonSlovoka/go-webview2/v1/webviewloader"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +40,7 @@ func main() {
 		"1": ExampleHelloWorld,
 		"2": ExampleWithNotifyIcon,
 		"3": ExampleNavigationStartingEventHandler,
+		"4": ExecuteScript,
 	}
 	for {
 		showCommandMenu()
@@ -71,6 +75,7 @@ func showCommandMenu() {
 1: HelloWorld
 2: ExampleWithNotifyIcon
 3: ExampleNavigationStartingEventHandler
+4: ExecuteScript
 quit: exit program
 `)
 }
@@ -163,6 +168,11 @@ func ExampleWithNotifyIcon(url string) {
 					case w32.WM_LBUTTONDBLCLK:
 						// user32dll.ShowWindow(hwnd, w32.SW_SHOWNORMAL)
 						dll.User.ShowWindow(hwnd, w32.SW_SHOW)
+						w := browser.(*edge.Chromium)
+						w.ExecuteScript(fmt.Sprintf(`
+document.querySelector("#testExecuteScript").onclick()
+document.querySelector("input[type='text']").value = "hello world"
+`))
 					case w32.WM_RBUTTONUP:
 						hMenu := user32dll.CreatePopupMenu()
 						_ = user32dll.AppendMenu(hMenu, w32.MF_STRING, 1023, "Display Dialog")
@@ -222,5 +232,61 @@ func ExampleWithNotifyIcon(url string) {
 
 	_ = w.Navigate(url)
 
+	w.Run()
+}
+
+func ExecuteScript(inputURL string) {
+	response, err := http.Get("https://www.wikipedia.org/")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var myHTMLContent []byte
+	myHTMLContent, err = io.ReadAll(response.Body)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	w, _ := webview2.NewWebView(&webview2.Config{
+		Title:          "webview hello world",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_ExecuteScript"),
+		Settings: webview2.Settings{
+			AreDevToolsEnabled:            true,
+			AreDefaultContextMenusEnabled: true,
+			IsZoomControlEnabled:          true,
+		},
+		WindowOptions: &webview2.WindowOptions{
+			IconPath: "./golang.ico",
+			Style:    w32.WS_OVERLAPPEDWINDOW,
+			WndProc: func(browser webview2.Browser, hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
+				switch uMsg {
+				case w32.WM_CREATE:
+					dll.User.ShowWindow(hwnd, w32.SW_SHOW)
+				case w32.WM_CLOSE:
+					fallthrough
+				case w32.WM_DESTROY:
+					dll.User.PostQuitMessage(0)
+				case w32.WM_SIZING:
+					w := browser.(*edge.Chromium)
+					w.ExecuteScript(fmt.Sprintf(`
+document.querySelector("#searchInput").value = "hello world"
+// document.querySelector("button[type='submit']").click()
+`))
+				}
+				return dll.User.DefWindowProc(hwnd, uMsg, wParam, lParam)
+			},
+		},
+	})
+	defer w.Release()
+
+	// response, err := http.Get("https://google.com") // 避免在這邊取資料，會等待一些時間，導致webview初始化失敗
+
+	// time.Sleep(5 * time.Second) // 注意，如果到Run的中間過程太久，會讓webview當機
+
+	webview := w.GetBrowser().(*edge.Chromium)
+	// webview.NavigateToString("<html><h1>hello world</h1></html>")
+	webview.NavigateToString(string(myHTMLContent)) // 如果是這種方式，form的submit可能會無效，因為與原站點已經不同
+	// webview.ExecuteScript() // 注意！ 寫在這邊無效, 要寫在Proc之中
 	w.Run()
 }

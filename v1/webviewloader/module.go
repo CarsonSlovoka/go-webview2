@@ -41,6 +41,8 @@ func Install(dirPath string, useNative bool) error {
 
 	dllPath := filepath.Join(dirPath, fmt.Sprintf("WebView2Loader_%s.dll", runtime.GOARCH))
 	if _, err = os.Stat(dllPath); os.IsNotExist(err) {
+		log.Printf("Install 'webview2Loader.dll' to %q", dllPath)
+
 		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil { // 已存在不影響，不存在就新建
 			return err
 		}

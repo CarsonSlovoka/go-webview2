@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"syscall"
+	"unicode/utf16"
 	"unsafe"
 )
 
@@ -239,5 +240,19 @@ func (c *Chromium) AddFrameNavigationStarting(
 func (c *Chromium) RemoveFrameNavigationStarting(token *EventRegistrationToken) {
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.removeFrameNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
 		uintptr(unsafe.Pointer(token)),
+	)
+}
+
+// ExecuteScript https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-executescript
+func (c *Chromium) ExecuteScript(javascript string) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.executeScript, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(javascript + "\x00")))[0])),
+	)
+}
+
+// NavigateToString https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-navigatetostring
+func (c *Chromium) NavigateToString(htmlContent string) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.navigateToString, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(htmlContent + "\x00")))[0])),
 	)
 }
