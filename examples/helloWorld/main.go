@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -260,6 +261,10 @@ func ExecuteScript(inputURL string) {
 			IconPath: "./golang.ico",
 			Style:    w32.WS_OVERLAPPEDWINDOW,
 			WndProc: func(browser webview2.Browser, hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
+				var w *edge.Chromium
+				if browser != nil {
+					w = browser.(*edge.Chromium)
+				}
 				switch uMsg {
 				case w32.WM_CREATE:
 					dll.User.ShowWindow(hwnd, w32.SW_SHOW)
@@ -268,7 +273,9 @@ func ExecuteScript(inputURL string) {
 				case w32.WM_DESTROY:
 					dll.User.PostQuitMessage(0)
 				case w32.WM_SIZING:
-					w := browser.(*edge.Chromium)
+					if browser != nil {
+						browser.Resize()
+					}
 					w.ExecuteScript(fmt.Sprintf(`
 document.querySelector("#searchInput").value = "hello world"
 // document.querySelector("button[type='submit']").click()
@@ -288,5 +295,25 @@ document.querySelector("#searchInput").value = "hello world"
 	// webview.NavigateToString("<html><h1>hello world</h1></html>")
 	webview.NavigateToString(string(myHTMLContent)) // 如果是這種方式，form的submit可能會無效，因為與原站點已經不同
 	// webview.ExecuteScript() // 注意！ 寫在這邊無效, 要寫在Proc之中
+
+	// 如果無響應，或者卡死，建議不要太頻繁地打開或關閉範例，有可能因此產生衝突導致
+
+	// 測試: AddScriptToExecuteOnDocumentCreated
+	{
+		// AddScriptToExecuteOnDocumentCreated的第二個參數，如果不想給，可以放nil，第二個參數僅會在首次調用時才會觸發，之後的其他頁面都不會再觸發
+		webview.AddScriptToExecuteOnDocumentCreated(`
+		window.alert("AddScriptToExecuteOnDocumentCreated test")
+		`, edge.NewICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler(func(eno syscall.Errno, pId *uint16) uintptr {
+			if eno != 0 {
+				log.Println(eno)
+			}
+			id := w32.UTF16PtrToString(pId)
+			log.Println(id)
+			webview.RemoveScriptToExecuteOnDocumentCreated(pId) // 若此項目，只想使用一次，可以考慮再這之後就把它移除，這樣其他的頁面將不會再加載這個函數
+			return 0
+		}))
+		// webview.RemoveScriptToExecuteOnDocumentCreated() // 如果您想嘗試在外移除，會無效
+	}
+
 	w.Run()
 }

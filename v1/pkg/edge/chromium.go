@@ -146,6 +146,13 @@ func (c *Chromium) Navigate(url string) syscall.Errno {
 	return c.webview.Navigate(url)
 }
 
+// NavigateToString https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-navigatetostring
+func (c *Chromium) NavigateToString(htmlContent string) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.navigateToString, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(htmlContent + "\x00")))[0])),
+	)
+}
+
 func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
 	return c.webview.GetSettings()
 }
@@ -195,16 +202,26 @@ func (c *Chromium) RemoveFrameNavigationStarting(token *EventRegistrationToken) 
 	)
 }
 
+// AddScriptToExecuteOnDocumentCreated https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#addscripttoexecuteondocumentcreated
+func (c *Chromium) AddScriptToExecuteOnDocumentCreated(script string,
+	handler *ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler, // 此參數僅在第一次註冊的時候會觸發
+) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.addScriptToExecuteOnDocumentCreated, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(script + "\x00")))[0])),
+		uintptr(unsafe.Pointer(handler)),
+	)
+}
+
+// RemoveScriptToExecuteOnDocumentCreated https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#removescripttoexecuteondocumentcreated
+func (c *Chromium) RemoveScriptToExecuteOnDocumentCreated(pID *uint16) {
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.removeScriptToExecuteOnDocumentCreated, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(pID)),
+	)
+}
+
 // ExecuteScript https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-executescript
 func (c *Chromium) ExecuteScript(javascript string) {
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.executeScript, uintptr(unsafe.Pointer(c.webview)),
 		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(javascript + "\x00")))[0])),
-	)
-}
-
-// NavigateToString https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-navigatetostring
-func (c *Chromium) NavigateToString(htmlContent string) {
-	_, _, _ = syscall.SyscallN(c.webview.vTbl.navigateToString, uintptr(unsafe.Pointer(c.webview)),
-		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(htmlContent + "\x00")))[0])),
 	)
 }
