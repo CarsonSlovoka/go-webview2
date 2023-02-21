@@ -138,31 +138,6 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 	// webview
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.addRef, uintptr(unsafe.Pointer(c.webview)))
 
-	// 以下添加webview相關內容
-	{
-
-		// var token EventRegistrationToken // 不重要，可以都共用即可
-
-		/* AddNavigationStarting, AddFrameNavigationStarting都可以在外自己定義
-		// 以下對iframe無效, 這是指ICoreWebView2.Navigate所導向的網址
-		_ = c.Webview.AddNavigationStarting(
-			c.navigationStartingEventHandler, // 觸發此方法的invoke，也就是NavigationStartingEventHandler函數
-			&token,
-		)
-
-		// 以下等同: c.Webview.AddFrameNavigationStarting 如果不想在ICoreWebView2實作這些方法可以考慮直接用這種方式
-		// _, _, _ = syscall.SyscallN(c.Webview.vTbl.addFrameNavigationStarting, uintptr(unsafe.Pointer(c.Webview)),
-		// 	uintptr(unsafe.Pointer(c.frameNavigationStartingHandler)),
-		// 	uintptr(unsafe.Pointer(&token)),
-		// )
-
-		_ = c.Webview.AddFrameNavigationStarting(
-			c.frameNavigationStartingHandler, // 觸發此方法的invoke，也就是FrameNavigationStartingEventHandler函數
-			&token,
-		)
-		*/
-	}
-
 	atomic.StoreUintptr(&c.isInited, 1)
 	return 0
 }
@@ -174,29 +149,6 @@ func (c *Chromium) Navigate(url string) syscall.Errno {
 func (c *Chromium) GetSettings() (*ICoreWebView2Settings, syscall.Errno) {
 	return c.webview.GetSettings()
 }
-
-/* 這些可以自己定義，請參考Example: example_eventHandler.go
-// NavigationStartingEventHandler
-// Using FrameNavigationStarting event instead of NavigationStarting event of CoreWebViewFrame
-// to cover all possible nested iframes inside the embedded site as CoreWebViewFrame
-// object currently only support first level iframes in the top page.
-func (c *Chromium) NavigationStartingEventHandler(sender *ICoreWebView2, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
-	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2navigationstartingeventargs.additionalallowedframeancestors?view=webview2-dotnet-1.0.1462.37
-	// 類似FrameNavigationStartingEventHandler
-	log.Println(args.GetURI()) // 指的是Navigate所代表的網址
-	return 0
-}
-
-func (c *Chromium) FrameNavigationStartingEventHandler(sender *ICoreWebView2Frame, args *ICoreWebView2NavigationStartingEventArgs) uintptr {
-	// args.PutAdditionalAllowedFrameAncestors("https://www.youtube.com/ 'self'") // <- 不懂，這樣設定是無效的
-	if args.GetURI() == "https://stackoverflow.com/" {
-		_ = args.PutAdditionalAllowedFrameAncestors("*")
-	}
-	// log.Println(args.GetAdditionalAllowedFrameAncestors())
-	log.Println(args.GetURI())
-	return 0
-}
-*/
 
 // AddNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_navigationstarting
 // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1243
