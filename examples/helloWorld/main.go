@@ -42,6 +42,7 @@ func main() {
 		"2": ExampleWithNotifyIcon,
 		"3": ExampleNavigationStartingEventHandler,
 		"4": ExecuteScript,
+		"5": ExampleBind,
 	}
 	for {
 		showCommandMenu()
@@ -77,6 +78,7 @@ func showCommandMenu() {
 2: ExampleWithNotifyIcon
 3: ExampleNavigationStartingEventHandler
 4: ExecuteScript
+5: ExampleBind
 quit: exit program
 `)
 }
@@ -315,5 +317,55 @@ document.querySelector("#searchInput").value = "hello world"
 		// webview.RemoveScriptToExecuteOnDocumentCreated() // 如果您想嘗試在外移除，會無效
 	}
 
+	w.Run()
+}
+
+func ExampleBind(url string) {
+	w, _ := webview2.NewWebView(&webview2.Config{
+		Title:          "webview bind",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_example_bind"),
+		Settings: webview2.Settings{
+			AreDevToolsEnabled:            true,
+			AreDefaultContextMenusEnabled: true,
+		},
+		WindowOptions: &webview2.WindowOptions{
+			Style: w32.WS_OVERLAPPEDWINDOW,
+		},
+	})
+	defer w.Release()
+
+	w.AddDispatch(func() {
+		log.Println("WM_APP CALL")
+		w.ExecuteScript(`console.log("WM_APP CALL")`)
+	})
+
+	// 無回傳值
+	if err := w.SetBind("Say", func(name string, msg ...string) {
+		log.Println(fmt.Sprintf("[%s]", name), msg)
+	}); err != nil {
+		log.Println(err)
+	}
+
+	// 錯誤只是用來判別有沒有設定成功，與觸發的函數沒有任何關係，如果確定沒有錯誤，可以不必處理錯誤
+	_ = w.SetBind("Say2", func(name string, msg ...string) string {
+		return fmt.Sprintf("[%s]", name)
+	})
+
+	// 測試回傳錯誤用
+	_ = w.SetBind("getErrByID", func(eno int) error {
+		return syscall.Errno(eno)
+	})
+
+	// 測試回傳為物件
+	type Person struct {
+		Name string
+		Age  int `json:"age"`
+	}
+
+	_ = w.SetBind("NewPerson", func(name string, age int) (*Person, error) {
+		return &Person{name, age}, nil
+	})
+
+	_ = w.Navigate(url)
 	w.Run()
 }

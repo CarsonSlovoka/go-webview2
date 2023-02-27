@@ -8,6 +8,7 @@ import (
 	"github.com/CarsonSlovoka/go-webview2/v1/dll"
 	"github.com/CarsonSlovoka/go-webview2/v1/pkg/edge"
 	"log"
+	"sync"
 )
 
 type webView struct {
@@ -15,7 +16,10 @@ type webView struct {
 	threadID uint32
 	Browser
 
-	releaseProc func()
+	m             sync.Mutex
+	bindFuncMap   map[string]any
+	dispatchQueue []func()
+	releaseProc   func()
 }
 
 type WindowOptions struct {
@@ -56,6 +60,7 @@ func NewWebView(cfg *Config) (WebView, error) {
 		cfg = &Config{}
 	}
 	w := &webView{}
+	w.bindFuncMap = make(map[string]any)
 
 	var err error
 	if cfg.ClassName == "" {
@@ -75,6 +80,7 @@ func NewWebView(cfg *Config) (WebView, error) {
 
 	var chromium *edge.Chromium
 	chromium = edge.NewChromium(cfg.UserDataFolder, 1)
+	chromium.MessageCallback = w.messageCallback
 	w.Browser = chromium
 	w.threadID = dll.Kernel.GetCurrentThreadId()
 
@@ -116,6 +122,15 @@ func (w *webView) Run() {
 	for {
 		if status, _ := dll.User.GetMessage(&msg, 0, 0, 0); status <= 0 {
 			break
+		}
+		if msg.Message == w32.WM_APP {
+			w.m.Lock()
+			q := append([]func(){}, w.dispatchQueue...) // 把所有我們定義的dispatch函數都送入
+			w.dispatchQueue = []func(){}                // 因為僅執行一次，所以清空
+			w.m.Unlock()
+			for _, v := range q {
+				v()
+			}
 		}
 		dll.User.TranslateMessage(&msg)
 		dll.User.DispatchMessage(&msg)

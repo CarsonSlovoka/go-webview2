@@ -25,13 +25,13 @@ type Chromium struct {
 	controller          *iCoreWebView2Controller                                    // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
+	webMessageReceived         *iCoreWebView2WebMessageReceivedEventHandler
 
-	webview                        *ICoreWebView2
-	navigationStartingEventHandler *ICoreWebView2NavigationStartingEventHandler
-	frameNavigationStartingHandler *ICoreWebView2FrameNavigationStartingEventHandler
+	webview *ICoreWebView2
 
-	userDataFolder string  // default: env(Appdata)/ExeName
-	isInited       uintptr // 1表示已經初始化ok
+	MessageCallback func(string)
+	userDataFolder  string  // default: env(Appdata)/ExeName
+	isInited        uintptr // 1表示已經初始化ok
 }
 
 func NewChromium(userDataFolder string, version uint8) *Chromium {
@@ -42,6 +42,7 @@ func NewChromium(userDataFolder string, version uint8) *Chromium {
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
 		c.controllerCompletedHandler = newControllerCompletedHandler(c)
+		c.webMessageReceived = newICoreWebView2WebMessageReceivedEventHandler(c, c.WebMessageReceived)
 	}
 
 	return c
@@ -85,7 +86,11 @@ func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 		_ = dll.User.DispatchMessage(&msg)
 	}
 
-	c.Resize()
+	// 此時的webview已經產生
+	c.Resize() // 必須Resize才能看到webView
+
+	// 我們對window新增了external屬性，讓其為一個object，含有postMessage的成員，該成員為一個函數，此函數接收一個字串，會呼叫window.chrome.webview這是webview自帶的一個object，postMessage會讓addWebMessageReceived的內容接收到訊息
+	c.AddScriptOnDocumentCreated(`window.external={postMessage:jsonStr=>window.chrome.webview.postMessage(jsonStr)}`)
 
 	return 0
 }
@@ -135,14 +140,25 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 
 	c.webview = controller.GetCoreWebView2()
 
+	var token EventRegistrationToken // 可以共用，不是太重要
+
 	// webview
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.addRef, uintptr(unsafe.Pointer(c.webview)))
+
+	// WebMessageReceived可以透過window.chrome.webview.postMessage傳送的訊息來觸發
+	// 此用意是當收到消息的時候，會觸發我們所定義的內容
+	// https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#add_webmessagereceived
+	_, _, _ = syscall.SyscallN(c.webview.vTbl.addWebMessageReceived, uintptr(unsafe.Pointer(c.webview)),
+		uintptr(unsafe.Pointer(c.webMessageReceived)),
+		uintptr(unsafe.Pointer(&token)),
+	)
 
 	atomic.StoreUintptr(&c.isInited, 1)
 	return 0
 }
 
 func (c *Chromium) Navigate(url string) syscall.Errno {
+
 	return c.webview.Navigate(url)
 }
 
@@ -202,6 +218,10 @@ func (c *Chromium) RemoveFrameNavigationStarting(token *EventRegistrationToken) 
 	)
 }
 
+func (c *Chromium) AddScriptOnDocumentCreated(script string) {
+	c.AddScriptToExecuteOnDocumentCreated(script, nil)
+}
+
 // AddScriptToExecuteOnDocumentCreated https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1518.46#addscripttoexecuteondocumentcreated
 func (c *Chromium) AddScriptToExecuteOnDocumentCreated(script string,
 	handler *ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler, // 此參數僅在第一次註冊的時候會觸發
@@ -224,4 +244,29 @@ func (c *Chromium) ExecuteScript(javascript string) {
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.executeScript, uintptr(unsafe.Pointer(c.webview)),
 		uintptr(unsafe.Pointer(&(utf16.Encode([]rune(javascript + "\x00")))[0])),
 	)
+}
+
+// WebMessageReceived https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2webmessagereceivedeventhandler-invoke
+// 可以被window.chrome.webview.postMessage傳送的訊息所觸發
+func (c *Chromium) WebMessageReceived(sender *ICoreWebView2, args *ICoreWebView2WebMessageReceivedEventArgs) uintptr {
+	// 傳入參數
+	var message *uint16
+
+	// 取得傳入參數
+	_, _, _ = syscall.SyscallN(args.vTbl.tryGetWebMessageAsString, uintptr(unsafe.Pointer(args)),
+		uintptr(unsafe.Pointer(&message)),
+	)
+
+	// 自定義流程
+	if c.MessageCallback != nil {
+		c.MessageCallback(w32.UTF16PtrToString(message))
+	}
+
+	// 原流程
+	_, _, _ = syscall.SyscallN(sender.vTbl.postWebMessageAsString, uintptr(unsafe.Pointer(sender)),
+		uintptr(unsafe.Pointer(message)),
+	)
+
+	dll.Ole.CoTaskMemFree(unsafe.Pointer(message))
+	return 0
 }

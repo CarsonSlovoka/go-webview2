@@ -12,6 +12,8 @@
   <input type="submit">
 </form>
 <pre></pre>
+<br>
+<button id="btn-bind">test bind</button>
 <button id="testExecuteScript" onclick="window.alert('testExecuteScript')">testExecuteScript</button>
 <iframe src="https://en.wikipedia.org/wiki/Main_Page" style="width:80vw;height:40vh"></iframe><br>
 <iframe src="https://stackoverflow.com/" style="width:80vw;height:40vh"></iframe><br>
@@ -35,6 +37,42 @@
           const responseData = await response.json()
           document.querySelector("pre").innerHTML = JSON.stringify(responseData, undefined, "  ")
         })
+    }
+
+    document.querySelector("#btn-bind").onclick = async () => {
+      // 沒回傳值測試
+      if (window["Say"] !== undefined) {
+        const r1 = await window["Say"](["Carson", "hello world!", "您好，世界！"])
+        console.log(r1) // null
+      }
+
+      // 單一回傳值
+      if (window["Say2"] !== undefined) {
+        const r2 = await window["Say2"](["Carson", "hello world!", "您好，世界！"]) // 注意所有參數都必須以array形式傳送，不能變成("arg1", "arg2")等方式
+        console.log(r2)
+      }
+
+      // 測試錯誤情況
+      if (window["getErrByID"] !== undefined) {
+        window["getErrByID"]([5]).then().catch(e => {
+          console.error(e)
+        })
+      }
+
+      // 回傳物件測試
+      if (window["NewPerson"] !== undefined) {
+        window["NewPerson"](["Carson", 30]).then(person=>{
+          // JSON.parse(person) // 不需要再透過JSON.parse，他會直接回傳物件
+          console.log(person.Name, person.age)
+        })
+      }
+
+      // 因為我們已經定義了addWebMessageReceived，所以也可以透過以下方法去呼叫相對應的go函數，只是這種方法將沒辦法得到回傳值，他只是postMessage，且完成時機也沒辦法做準確判斷
+      window.chrome.webview.postMessage(JSON.stringify({
+        id: -1,
+        method: "Say",
+        params: Array.prototype.slice.call(["ABC", "123"]),
+      }))
     }
   })()
 </script>
