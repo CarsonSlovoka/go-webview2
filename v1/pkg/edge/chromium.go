@@ -8,7 +8,6 @@ import (
 	"github.com/CarsonSlovoka/go-webview2/v1/webviewloader"
 	"log"
 	"os"
-	"path/filepath"
 	"sync/atomic"
 	"syscall"
 	"unicode/utf16"
@@ -52,24 +51,37 @@ func NewChromium(userDataFolder string, version uint8) *Chromium {
 func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 	c.hwnd = hwnd
 
-	if c.userDataFolder == "" {
-		curExePath, _ := dll.Kernel.GetModuleFileName(0)
-		c.userDataFolder = filepath.Join(
-			os.Getenv("Appdata"),
-			filepath.Base(curExePath),
-		)
+	/*
+		if c.userDataFolder == "" {
+			curExePath, _ := dll.Kernel.GetModuleFileName(0)
+			c.userDataFolder = filepath.Join(
+				os.Getenv("Appdata"),
+				filepath.Base(curExePath),
+			)
+		}
+	*/
+
+	if c.userDataFolder != "" {
+		if err := os.MkdirAll(c.userDataFolder, os.ModePerm); err != nil {
+			return w32.ERROR_CREATE_FAILED
+		}
 	}
 
-	if err := os.MkdirAll(c.userDataFolder, os.ModePerm); err != nil {
-		return w32.ERROR_CREATE_FAILED
-	}
+	// TODO 不成功，有待嘗試
+	// var envOptions ICoreWebView2EnvironmentOptions
 
-	if _, eno := webviewloader.CreateCoreWebView2EnvironmentWithOptions("", c.userDataFolder,
-		0,
+	if _, eno := webviewloader.CreateCoreWebView2EnvironmentWithOptions("", c.userDataFolder, // 如果ExecutableFolder和DataFolder都為空白，預設會在執行檔的路徑生成EBWebView的資料夾
+		0, // uintptr(unsafe.Pointer(&envOptions)),
 		uintptr(unsafe.Pointer(c.envCompletedHandler)), // 完成之後會觸發envCompletedHandler.Invoke方法
 	); eno != 0 {
 		return eno
 	}
+
+	/* TODO: 有待試驗
+	if eno := envOptions.PutAdditionalBrowserArguments(&(utf16.Encode([]rune("--disable-web-security --disable-features=IsolateOrigins,site-per-process" + "\x00")))[0]); eno != 0 {
+		log.Println(eno)
+	}
+	*/
 
 	var msg w32.MSG
 	// 等待webview初始化完畢 (也就是整個envCompletedHandler處理完成)

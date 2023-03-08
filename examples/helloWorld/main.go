@@ -400,7 +400,6 @@ func ExampleAddNavigationCompleted(inputURL string) {
 	defer w.Release()
 
 	browser := w.GetBrowser().(*edge.Chromium)
-
 	var token edge.EventRegistrationToken
 	_ = browser.AddNavigationCompleted(&token, func(sender *edge.ICoreWebView2, args *edge.ICoreWebView2NavigationCompletedEventArgs) uintptr {
 		// _ = browser.Controller.PutIsVisible(false)
