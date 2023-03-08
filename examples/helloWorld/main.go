@@ -43,6 +43,7 @@ func main() {
 		"3": ExampleNavigationStartingEventHandler,
 		"4": ExecuteScript,
 		"5": ExampleBind,
+		"6": ExampleAddNavigationCompleted,
 	}
 	for {
 		showCommandMenu()
@@ -79,6 +80,7 @@ func showCommandMenu() {
 3: ExampleNavigationStartingEventHandler
 4: ExecuteScript
 5: ExampleBind
+6: ExampleAddNavigationCompleted
 quit: exit program
 `)
 }
@@ -367,5 +369,61 @@ func ExampleBind(url string) {
 	})
 
 	_ = w.Navigate(url)
+	w.Run()
+}
+
+func ExampleAddNavigationCompleted(inputURL string) {
+
+	w, _ := webview2.NewWebView(&webview2.Config{
+		Title:          "webview hello world",
+		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_example_AddNavigationCompleted"),
+		WindowOptions: &webview2.WindowOptions{
+			IconPath: "./golang.ico",
+			Style:    w32.WS_OVERLAPPEDWINDOW,
+			WndProc: func(browser webview2.Browser, hwnd w32.HWND, uMsg w32.UINT, wParam w32.WPARAM, lParam w32.LPARAM) w32.LRESULT {
+				switch uMsg {
+				case w32.WM_CREATE:
+					dll.User.ShowWindow(hwnd, w32.SW_HIDE) // 一開始隱藏視窗
+				case w32.WM_CLOSE:
+					fallthrough
+				case w32.WM_DESTROY:
+					dll.User.PostQuitMessage(0)
+				case w32.WM_SIZE:
+					if browser != nil {
+						browser.Resize()
+					}
+				}
+				return dll.User.DefWindowProc(hwnd, uMsg, wParam, lParam)
+			},
+		},
+	})
+	defer w.Release()
+
+	browser := w.GetBrowser().(*edge.Chromium)
+
+	var token edge.EventRegistrationToken
+	_ = browser.AddNavigationCompleted(&token, func(sender *edge.ICoreWebView2, args *edge.ICoreWebView2NavigationCompletedEventArgs) uintptr {
+		// _ = browser.Controller.PutIsVisible(false)
+		statusCode := args.GetWebErrorStatus()
+		log.Println("webErrorStatus:", statusCode)
+		if args.GetIsSuccess() {
+			log.Println("NavigationCompleted successful")
+		} else {
+			log.Println("NavigationCompleted failure")
+		}
+
+		dll.User.ShowWindow(w.HWND(), w32.SW_SHOW) // 顯示視窗
+		_ = browser.Controller.PutIsVisible(true)  // 讓webview2的控件能正常顯示. 注意此方法放在AddNavigationCompleted以外呼叫會沒有效果
+		return 0
+	})
+
+	_ = w.Navigate("https://github.com/")
+
+	/* 無效
+	go func() {
+		browser.Controller.PutIsVisible(true)
+		dll.User.ShowWindow(w.HWND(), w32.SW_SHOW)
+	}()
+	*/
 	w.Run()
 }

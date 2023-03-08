@@ -100,3 +100,12 @@ func (i *ICoreWebView2) Navigate(uri string) syscall.Errno {
 	)
 	return eno
 }
+
+// AddNavigationCompleted https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_navigationcompleted
+func (i *ICoreWebView2) AddNavigationCompleted(eventHandler *ICoreWebView2NavigationCompletedEventHandler, token *EventRegistrationToken) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.addNavigationCompleted, uintptr(unsafe.Pointer(i)),
+		uintptr(unsafe.Pointer(eventHandler)),
+		uintptr(unsafe.Pointer(token)),
+	)
+	return eno
+}

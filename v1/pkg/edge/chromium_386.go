@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Chromium) Resize() {
-	if c.controller == nil {
+	if c.Controller == nil {
 		return
 	}
 	var bounds w32.RECT
@@ -18,7 +18,7 @@ func (c *Chromium) Resize() {
 		return
 	}
 
-	_, _, _ = syscall.SyscallN(c.controller.vTbl.putBounds, uintptr(unsafe.Pointer(c.controller)),
+	_, _, _ = syscall.SyscallN(c.Controller.vTbl.putBounds, uintptr(unsafe.Pointer(c.Controller)),
 		// 386不吃整個RECT，要分開餵入
 		uintptr(bounds.Left),
 		uintptr(bounds.Top),

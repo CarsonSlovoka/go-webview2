@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"github.com/CarsonSlovoka/go-pkg/v2/w32"
 	"syscall"
 	"unsafe"
 )
@@ -45,6 +46,28 @@ type iCoreWebView2ControllerVTbl struct {
 type iCoreWebView2Controller struct {
 	vTbl *iCoreWebView2ControllerVTbl
 	// impl iCoreWebView2ControllerImpl // 實作都和原來的一樣，不需要再指定
+}
+
+// GetIsVisible https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-get_isvisible
+func (i *iCoreWebView2Controller) GetIsVisible() bool {
+	var isVisible int32
+	_, _, _ = syscall.SyscallN(i.vTbl.getIsVisible, uintptr(unsafe.Pointer(i)),
+		uintptr(unsafe.Pointer(&isVisible)),
+	)
+	if isVisible == 0 {
+		return false
+	}
+	return true
+}
+
+// PutIsVisible https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-put_isvisible
+// 設定webview2的控件是否顯示
+// 注意: 可不可見，不是指視窗本身，例如您使用了Navigate導覽到某一個頁面，當使用PutIsVisible(false)，的時候可以讓使用者看不見，只能看到空白的視窗。
+func (i *iCoreWebView2Controller) PutIsVisible(isVisible bool) syscall.Errno {
+	_, _, eno := syscall.SyscallN(i.vTbl.putIsVisible, uintptr(unsafe.Pointer(i)),
+		w32.UintptrFromBool(isVisible),
+	)
+	return eno
 }
 
 // GetCoreWebView2 https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2controller-get_corewebview2

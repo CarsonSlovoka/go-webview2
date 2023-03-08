@@ -22,7 +22,7 @@ type Chromium struct {
 	// envCompletedHandler        uintptr // 這樣也會有問題，因為go如果變數沒有用到會把記憶體自動回收，保存已經被回收的記憶體空間是沒有意義的
 	// envCompletedHandler        iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerImpl // 這樣弄可行，但不好閱讀，而且要寫額外的代碼
 	envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 可以直接放最後一個版本，因為所有2.x的版本都是兼容，所以放最後一個版本可以做更多的事情，至於如果版本過低，可以在程式中寫邏輯判斷
-	controller          *iCoreWebView2Controller                                    // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
+	Controller          *iCoreWebView2Controller                                    // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 	webMessageReceived         *iCoreWebView2WebMessageReceivedEventHandler
@@ -136,7 +136,7 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 		log.Fatalf("Creating Controller failed with %v", errCode.Error())
 	}
 	_, _, _ = syscall.SyscallN(controller.vTbl.addRef, uintptr(unsafe.Pointer(controller)))
-	c.controller = controller
+	c.Controller = controller
 
 	c.webview = controller.GetCoreWebView2()
 
@@ -158,7 +158,6 @@ func (c *Chromium) ControllerCompleted(errCode syscall.Errno, controller *iCoreW
 }
 
 func (c *Chromium) Navigate(url string) syscall.Errno {
-
 	return c.webview.Navigate(url)
 }
 
@@ -196,6 +195,12 @@ func (c *Chromium) RemoveNavigationStarting(token *EventRegistrationToken) {
 	_, _, _ = syscall.SyscallN(c.webview.vTbl.removeNavigationStarting, uintptr(unsafe.Pointer(c.webview)),
 		uintptr(unsafe.Pointer(token)),
 	)
+}
+
+func (c *Chromium) AddNavigationCompleted(token *EventRegistrationToken,
+	navigationCompletedEventHandler func(sender *ICoreWebView2, args *ICoreWebView2NavigationCompletedEventArgs) uintptr,
+) syscall.Errno {
+	return c.webview.AddNavigationCompleted(NewNavigationCompletedEventHandler(c, navigationCompletedEventHandler), token)
 }
 
 // AddFrameNavigationStarting https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/webview2/nf-webview2-icorewebview2-add_framenavigationstarting
