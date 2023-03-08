@@ -31,7 +31,7 @@ func (w *webView) AddScriptOnDocumentCreated(script string) {
 	w.Browser.AddScriptOnDocumentCreated(script)
 }
 
-// SetBind 提供javascript觸發window.chrome.webview.postMessage的途徑，並且觸發後能執行所設定的函數
+// SetBind 提供javascript觸發window.chrome.webview.postMessage的途徑，並且觸發後能執行所設定的函數: https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/javascript/
 // 過程:
 // 主要是透過AddScriptOnDocumentCreated注入函數
 // 此函數會向window新增一個name的成員，這個成員為一個函數，回傳型態為Promise
