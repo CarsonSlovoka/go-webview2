@@ -88,7 +88,7 @@ quit: exit program
 func ExampleHelloWorld(url string) {
 	w, _ := webview2.NewWebView(&webview2.Config{
 		Title:          "webview hello world",
-		UserDataFolder: filepath.Join(os.Getenv("appdata"), "webview2_hello_world"),
+		UserDataFolder: "", // filepath.Join(os.Getenv("appdata"), "webview2_hello_world"),
 		WindowOptions: &webview2.WindowOptions{
 			IconPath: "./golang.ico",
 			Style:    w32.WS_OVERLAPPEDWINDOW,
@@ -402,7 +402,7 @@ func ExampleAddNavigationCompleted(inputURL string) {
 	browser := w.GetBrowser().(*edge.Chromium)
 	var token edge.EventRegistrationToken
 	_ = browser.AddNavigationCompleted(&token, func(sender *edge.ICoreWebView2, args *edge.ICoreWebView2NavigationCompletedEventArgs) uintptr {
-		// _ = browser.Controller.PutIsVisible(false)
+		// _ = browser.Controller.PutIsVisible(false) // false的情況下，其實還是能正常工作，只是使用者看不到畫面而已
 		statusCode := args.GetWebErrorStatus()
 		log.Println("webErrorStatus:", statusCode)
 		if args.GetIsSuccess() {

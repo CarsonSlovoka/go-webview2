@@ -14,6 +14,7 @@ import (
 var (
 	webView2LoaderDll *syscall.LazyDLL
 
+	procCreateCoreWebView2Environment                    uintptr
 	procCreateCoreWebView2EnvironmentWithOptionsAddr     uintptr
 	procCompareBrowserVersionsAddr                       uintptr
 	procGetAvailableCoreWebView2BrowserVersionStringAddr uintptr
@@ -31,6 +32,7 @@ func Install(dirPath string, useNative bool) error {
 		webView2LoaderDll = syscall.NewLazyDLL("WebView2Loader.dll")
 		if webView2LoaderDll.Load() == nil {
 			hModule = syscall.Handle(webView2LoaderDll.Handle())
+			procCreateCoreWebView2Environment = webView2LoaderDll.NewProc("CreateCoreWebView2Environment").Addr()
 			procCreateCoreWebView2EnvironmentWithOptionsAddr = webView2LoaderDll.NewProc("CreateCoreWebView2EnvironmentWithOptions").Addr()
 			procCompareBrowserVersionsAddr = webView2LoaderDll.NewProc("CompareBrowserVersions").Addr()
 			procGetAvailableCoreWebView2BrowserVersionStringAddr = webView2LoaderDll.NewProc("GetAvailableCoreWebView2BrowserVersionString").Addr()
@@ -58,10 +60,21 @@ func Install(dirPath string, useNative bool) error {
 	if err != nil {
 		return err
 	}
+	procCreateCoreWebView2Environment, _ = syscall.GetProcAddress(hModule, "CreateCoreWebView2Environment")
 	procCreateCoreWebView2EnvironmentWithOptionsAddr, _ = syscall.GetProcAddress(hModule, "CreateCoreWebView2EnvironmentWithOptions")
 	procCompareBrowserVersionsAddr, _ = syscall.GetProcAddress(hModule, "CompareBrowserVersions")
 	procGetAvailableCoreWebView2BrowserVersionStringAddr, _ = syscall.GetProcAddress(hModule, "GetAvailableCoreWebView2BrowserVersionString")
 	return nil
+}
+
+// CreateCoreWebView2Environment https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl?view=webview2-1.0.1462.37#createcorewebview2environment
+func CreateCoreWebView2Environment(
+	environmentCreatedHandler uintptr, // ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 完成之後會呼叫該地址的Invoke函數
+) (uintptr, syscall.Errno) {
+	r, _, eno := syscall.SyscallN(procCreateCoreWebView2Environment,
+		environmentCreatedHandler,
+	)
+	return r, eno
 }
 
 // CreateCoreWebView2EnvironmentWithOptions https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/webview2-idl?view=webview2-1.0.1462.37#createcorewebview2environmentwithoptions

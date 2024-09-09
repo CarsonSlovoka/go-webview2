@@ -21,7 +21,8 @@ type Chromium struct {
 	// envCompletedHandler        uintptr // 這樣也會有問題，因為go如果變數沒有用到會把記憶體自動回收，保存已經被回收的記憶體空間是沒有意義的
 	// envCompletedHandler        iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandlerImpl // 這樣弄可行，但不好閱讀，而且要寫額外的代碼
 	envCompletedHandler *iCoreWebView2CreateCoreWebView2EnvironmentCompletedHandler // 可以直接放最後一個版本，因為所有2.x的版本都是兼容，所以放最後一個版本可以做更多的事情，至於如果版本過低，可以在程式中寫邏輯判斷
-	Controller          *iCoreWebView2Controller                                    // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
+	envOptions          *ICoreWebView2EnvironmentOptions
+	Controller          *iCoreWebView2Controller // 透過envCompletedHandler取得，因為有其他需求，需要得知controller
 
 	controllerCompletedHandler *iCoreWebView2CreateCoreWebView2ControllerCompletedHandler
 	webMessageReceived         *iCoreWebView2WebMessageReceivedEventHandler
@@ -40,6 +41,7 @@ func NewChromium(userDataFolder string, version uint8) *Chromium {
 		fallthrough
 	default: // 預設用最低版本
 		c.envCompletedHandler = newEnvironmentCompletedHandler(c)
+		c.envOptions = new2EnvironmentOptions(c)
 		c.controllerCompletedHandler = newControllerCompletedHandler(c)
 		c.webMessageReceived = newICoreWebView2WebMessageReceivedEventHandler(c, c.WebMessageReceived)
 	}
@@ -67,20 +69,75 @@ func (c *Chromium) Embed(hwnd w32.HWND) syscall.Errno {
 		}
 	}
 
-	// TODO 不成功，有待嘗試
-	// var envOptions ICoreWebView2EnvironmentOptions
+	c.envOptions.VTbl.PutAdditionalBrowserArguments = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions, argStr *uint16) uintptr {
+		return 0
+	})
 
+	syscall.NewCallback(func(number int) uintptr { return uintptr(number) + 3 })
+
+	c.envOptions.VTbl.GetLanguage = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions, argStr *uint16) uintptr {
+		return 0
+	})
+
+	// syscall.SyscallN(c.envOptions.VTbl.GetLanguage, uintptr(unsafe.Pointer(c.envOptions)), )
+
+	/*
+		c.envOptions.VTbl.getAdditionalBrowserArguments = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions, argStr *uint16) uintptr {
+			return 1
+		})
+
+		c.envOptions.VTbl.PutAdditionalBrowserArguments = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions, argStr *uint16) uintptr {
+			return 0
+		})
+	*/
+
+	type TT struct {
+		QueryInterface                            uintptr
+		AddRef                                    uintptr
+		Release                                   uintptr
+		GetAdditionalBrowserArguments             uintptr
+		PutAdditionalBrowserArguments             uintptr // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions?view=webview2-1.0.1462.37#put_additionalbrowserarguments
+		GetLanguage                               uintptr
+		PutLanguage                               uintptr
+		GetTargetCompatibleBrowserVersion         uintptr
+		PutTargetCompatibleBrowserVersion         uintptr
+		GetAllowSingleSignOnUsingOSPrimaryAccount uintptr
+		PutAllowSingleSignOnUsingOSPrimaryAccount uintptr
+	}
+	abc := new(TT)
+	abc.QueryInterface = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions, guid *w32.GUID, object uintptr) uintptr {
+		return 0
+	})
+	abc.AddRef = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions) uintptr {
+		return 1
+	})
+	abc.Release = syscall.NewCallback(func(this *ICoreWebView2EnvironmentOptions) uintptr {
+		return 1
+	})
+
+	// TODO 不成功，有待嘗試
 	if _, eno := webviewloader.CreateCoreWebView2EnvironmentWithOptions("", c.userDataFolder, // 如果ExecutableFolder和DataFolder都為空白，預設會在執行檔的路徑生成EBWebView的資料夾
-		0, // uintptr(unsafe.Pointer(&envOptions)),
+		// uintptr(unsafe.Pointer(&c.envOptions)),
+		uintptr(unsafe.Pointer(&abc)),
 		uintptr(unsafe.Pointer(c.envCompletedHandler)), // 完成之後會觸發envCompletedHandler.Invoke方法
 	); eno != 0 {
 		return eno
 	}
+	_ = 5
 
-	/* TODO: 有待試驗
-	if eno := envOptions.PutAdditionalBrowserArguments(&(utf16.Encode([]rune("--disable-web-security --disable-features=IsolateOrigins,site-per-process" + "\x00")))[0]); eno != 0 {
-		log.Println(eno)
-	}
+	/*
+		if _, eno := webviewloader.CreateCoreWebView2Environment(uintptr(unsafe.Pointer(c.envCompletedHandler))); eno != 0 {
+			return eno
+		}
+	*/
+
+	// TODO: 有待試驗
+	// c.envOptions.VTbl.GetLanguage()
+	/*
+		if eno := c.envOptions.PutAdditionalBrowserArguments(&(utf16.Encode([]rune("--disable-web-security --disable-features=IsolateOrigins,site-per-process" + "\x00")))[0]); eno != 0 {
+			log.Println(eno)
+		}
+
 	*/
 
 	var msg w32.MSG
